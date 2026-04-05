@@ -1,0 +1,38 @@
+<?php
+
+return [
+
+   'menu' => [
+        [
+            'title' => '대시보드',
+            'icon' => 'fa-solid fa-tachometer-alt',
+            'route' => 'admin.index',
+            
+        ],
+        [
+            'title' => '유저 관리',
+            'icon' => 'fa-solid fa-users',
+            'route' => 'admin.users.index',
+            'submenu' => [
+                [
+                    'title' => '유저 목록',
+                    'icon' => 'fa-solid fa-list',
+                    'route' => 'admin.users.index',
+                ],
+            ],
+        ],
+        [
+            'title' => '게시글 관리',
+            'icon' => 'fa-solid fa-file-alt',
+            'route' => 'admin.posts.index',
+            'submenu' => [
+                [
+                    'title' => '게시글 목록',
+                    'icon' => 'fa-solid fa-list',
+                    'route' => 'admin.posts.index',
+                ],
+            ],
+        ],
+    ],
+
+];

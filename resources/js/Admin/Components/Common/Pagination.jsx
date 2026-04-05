@@ -1,7 +1,7 @@
 import { Link } from "@inertiajs/react";
 
 export default function Pagination({ links }) {
-    console.log("Pagination Links:", links); // 디버깅용 로그
+    // console.log("Pagination Links:", links); // 디버깅용 로그
     // 페이지가 1개뿐이면 표시하지 않음
     if (links.length <= 3) return null;
 

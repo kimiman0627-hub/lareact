@@ -58,6 +58,23 @@ class UserController extends Controller
         return $params;
     }
 
+    public function search(Request $request)
+    {
+        $request->validate([
+            'keyword' => 'required|string|max:100',
+        ]);
+
+        $keyword = $request->keyword;
+        $users = User::select(['id', 'name', 'email'])
+            ->where('id', 'like', "%{$keyword}%")
+            ->orWhere('name', 'like', "%{$keyword}%")
+            ->orWhere('email', 'like', "%{$keyword}%")
+            ->limit(10)
+            ->get();
+
+        return $this->success($users);
+    }
+
     public function getUserList(Request $request)
     {
         $params = self::validateIndex($request);

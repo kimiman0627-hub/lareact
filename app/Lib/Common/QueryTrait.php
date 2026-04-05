@@ -88,6 +88,23 @@ trait QueryTrait
         return $this->whereBetween($column, $min, $max);
     }
 
+    public function orWhereLike(string $column, string $value): self
+    {
+        if (empty($this->whereConditions)) {
+            return $this->whereLike($column, $value);
+        }
+        $this->whereConditions[] = "OR $column LIKE ?";
+        $this->bindings[] = "%$value%";
+        return $this;
+    }
+
+    public function whereRaw(string $raw, array $bindings = []): self
+    {
+        $this->whereConditions[] = $raw;
+        $this->bindings = array_merge($this->bindings, $bindings);
+        return $this;
+    }
+
     public function orderBy(string $column, string $direction = 'DESC'): self
     {
         $this->orderBy[] = "{$column} " . strtoupper($direction);

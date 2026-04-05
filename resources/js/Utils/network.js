@@ -1,7 +1,10 @@
 import axios from "axios";
 
 const client = axios.create({
-    headers: { "X-Requested-With": "XMLHttpRequest" },
+    headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        Accept: "application/json",
+    },
 });
 
 export const ajax = {

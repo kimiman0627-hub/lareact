@@ -40,6 +40,9 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
                 'admin' => $request->user('admin'), // 관리자 유저
             ],
+
+            // 관리자로 인증된 경우에만 config/admin.php의 menu를 전달
+            'adminMenu' => $request->user('admin') ? config('admin.menu') : null,
         ]);
     }
 }
