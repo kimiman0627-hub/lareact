@@ -70,7 +70,7 @@ trait QueryTrait
 
     public function whereLike(string $column, string $value): self
     {
-        $this->whereConditions[] = "$column LIKE ?";
+        $this->whereConditions[] = "$column ILIKE ?";
         $this->bindings[] = "%$value%";
         return $this;
     }
@@ -93,7 +93,7 @@ trait QueryTrait
         if (empty($this->whereConditions)) {
             return $this->whereLike($column, $value);
         }
-        $this->whereConditions[] = "OR $column LIKE ?";
+        $this->whereConditions[] = "OR $column ILIKE ?";
         $this->bindings[] = "%$value%";
         return $this;
     }

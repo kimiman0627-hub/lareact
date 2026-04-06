@@ -33,6 +33,18 @@ return [
                 ],
             ],
         ],
+        [
+            'title' => '배너 관리',
+            'icon' => 'fa-solid fa-image',
+            'route' => 'admin.banners.index',
+            'submenu' => [
+                [
+                    'title' => '배너 관리',
+                    'icon' => 'fa-solid fa-list',
+                    'route' => 'admin.banners.index',
+                ],
+            ],
+        ],
     ],
 
 ];

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Collection;
 use App\Lib\Common\QueryTrait;
 use App\Lib\Common\ResultTrait;
 
+use Illuminate\Support\Facades\Log;
 
 class Post
 {
@@ -24,7 +25,7 @@ class Post
     public function genQuery()
     {
         if (!empty($this->params['id'] ?? null)) {
-            $this->where('P.id', '=', $this->params['id']);
+            $this->where('P.post_id', '=', $this->params['id']);
         }
         
         if (!empty($this->params['email'] ?? null)) {
@@ -44,7 +45,7 @@ class Post
                     $this->whereLike('P.content', $this->params['keyword']);
                     break;
                 case 'all':
-                    $this->whereRaw('(P.title LIKE ? OR P.content LIKE ?)', [$this->params['keyword'], $this->params['keyword']]);
+                    $this->whereRaw('(P.title ILIKE ? OR P.content ILIKE ?)', ['%' . $this->params['keyword'] . '%', '%' . $this->params['keyword'] . '%']);
                     break;
             }
         }
@@ -57,20 +58,18 @@ class Post
         $this->limit($this->params['page'] ?? 1, $this->params['per_page'] ?? 20);
     }
 
-    /**
-     * 쿼리 파라미터로 사용자 목록을 조회하고 ResultTrait 형식으로 반환합니다.
-     *
-     * @param array $params
-     * @return array
-     */
     public function getList()
     {
         try {
-            return DB::select("SELECT * 
-                FROM  posts AS P
+            return DB::select("SELECT P.*,
+                    U.email, U.name,
+                    STRING_AGG(PB.banner_id::text, ',') AS banner_ids
+                FROM posts AS P
                 INNER JOIN users AS U ON P.user_id = U.id
+                LEFT JOIN post_banners AS PB ON P.post_id = PB.post_id
                 {$this->buildWhere()}
-                {$this->buildOrderBy()} 
+                GROUP BY P.post_id, U.id, U.email, U.name
+                {$this->buildOrderBy()}
                 {$this->buildLimit()}", $this->bindings);
         } catch (\Throwable $e) {
             $this->setResult(500, $e->getMessage());
@@ -81,8 +80,8 @@ class Post
     public function getCount()
     {
         try {
-            return DB::selectOne("SELECT COUNT(*) AS total 
-                FROM  posts AS P
+            return DB::selectOne("SELECT COUNT(DISTINCT P.post_id) AS total
+                FROM posts AS P
                 INNER JOIN users AS U ON P.user_id = U.id
                 {$this->buildWhere()}", $this->bindings)->total ?? 0;
         } catch (\Throwable $e) {
@@ -91,15 +90,7 @@ class Post
         }
     }
 
-    /**
-     * 사용자 전체 목록을 가져옵니다.
-     *
-     * @return Collection<PostModel>
-     */
-    public function all(): Collection
-    {
-        return PostModel::all();
-    }
+   
 
     /**
      * ID로 사용자 조회
@@ -112,19 +103,9 @@ class Post
         return PostModel::find($id);
     }
 
+    
     /**
-     * 이메일로 사용자 조회
-     *
-     * @param string $email
-     * @return PostModel|null
-     */
-    public function findByEmail(string $email): ?PostModel
-    {
-        return PostModel::where('email', $email)->first();
-    }
-
-    /**
-     * 신규 사용자 생성
+     * 신규 게시물 생성
      *
      * @param array $data
      * @return PostModel
@@ -135,7 +116,7 @@ class Post
     }
 
     /**
-     * 기존 사용자 수정
+     * 기존 게시물 수정
      *
      * @param int $id
      * @param array $data
@@ -143,7 +124,7 @@ class Post
      */
     public function update(): ?PostModel
     {
-        $post = $this->find($this->params['id'] ?? 0);
+        $post = $this->find($this->params['post_id'] ?? $this->params['id'] ?? 0);
         if (!$post) {
             return null;
         }
@@ -155,7 +136,7 @@ class Post
     }
 
     /**
-     * 사용자 삭제
+     * 게시물 삭제
      *
      * @param int $id
      * @return bool
@@ -163,10 +144,13 @@ class Post
     public function delete(int $id): bool
     {
         $post = $this->find($id);
+        
+        Log::info("Post delete - found post: " . ($post ? 'yes' : 'no'));
         if (!$post) {
             return false;
         }
-
-        return (bool) $post->delete();
+        
+        $result = $post->delete();  
+        return (bool) $result;
     }
 }

@@ -1,0 +1,14 @@
+# 패키지 폴더
+node_modules/
+vendor/
+
+# 빌드 결과물
+public/build/
+public/hot/
+storage/
+bootstrap/cache/
+
+# 로그/캐시
+*.log
+
+# .env

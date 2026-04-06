@@ -17,6 +17,8 @@ export default function PostIndex({
     postTypes,
     postStatuses,
     postCategories,
+    banners,
+    bannerPositions,
 }) {
     const { auth } = usePage().props;
 
@@ -51,6 +53,7 @@ export default function PostIndex({
         post_type: "NORMAL",
         post_category: "",
         is_notice: false,
+        banner_ids: [],
     });
 
     // 등록 모달 열기
@@ -62,41 +65,51 @@ export default function PostIndex({
     // 수정 모달 열기
     const openPostEditModal = (item) => {
         setData({
-            id: item.id,
+            id: item.post_id,
             title: item.title,
             content: item.content,
             post_status: item.post_status,
             post_type: item.post_type,
             post_category: item.post_category,
-            is_notice: item.is_notice === 1, // DB 값이 0/1인 경우 처리
+            is_notice: item.is_notice === true,
+            user_id: item.user_id,
+            created_at: item.created_at,
+            email: item.email,
+            name: item.name,
+            banner_ids: item.banner_ids ?? [],
         });
         setIsPostModalOpen(true);
     };
 
     const handleSubmit = (data) => {
         console.log("Submitting post data:", data);
+        data.is_notice = data.is_notice ? true : false; // 체크박스 값이 boolean으로 변환되도록 처리
+
         if (data.id) {
-            router.put(route("admin.posts.update", data.id), data, {
+            http.put(route("admin.posts.update", data.id), data, {
                 onSuccess: () => setIsPostModalOpen(false),
             });
         } else {
-            router.post(route("admin.posts.store"), data, {
+            http.post(route("admin.posts.store"), data, {
                 onSuccess: () => setIsPostModalOpen(false),
             });
         }
     };
 
-    const deleteUser = (id) => {
-        if (window.confirm("정말로 이 게시물을 삭제하시겠습니까?")) {
-            router.delete(`/admin/posts/${id}`, {
-                onSuccess: () => {
-                    http.get("/admin/posts", {
+    const deletePost = (id) => {
+        http.delete(`/admin/posts/${id}`, {
+            confirmMsg: "게시물을 삭제하시겠습니까?",
+            onSuccess: () => {
+                http.get(
+                    "/admin/posts",
+                    {},
+                    {
                         preserveState: true,
                         replace: true,
-                    });
-                },
-            });
-        }
+                    },
+                );
+            },
+        });
     };
 
     const handleSearch = (e) => {
@@ -137,6 +150,8 @@ export default function PostIndex({
                     postTypes={postTypes}
                     postStatuses={postStatuses}
                     postCategories={postCategories}
+                    banners={banners}
+                    bannerPositions={bannerPositions}
                     onSubmit={handleSubmit}
                 />
 
@@ -293,20 +308,21 @@ export default function PostIndex({
                         <tbody className="divide-y divide-gray-200">
                             {list.data.map((post) => (
                                 <tr
-                                    key={post.id}
+                                    key={post.post_id}
                                     className="hover:bg-gray-50 transition"
                                 >
                                     <td className="px-6 py-4 text-sm text-gray-500">
-                                        {post.id}
+                                        {post.post_id}
                                     </td>
                                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                         {post.title}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">
-                                        {post.status}
-                                    </td>
+
                                     <td className="px-6 py-4 text-sm text-gray-600">
                                         {post.email} / {post.name}
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-600">
+                                        {postStatuses[post.post_status]}
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-600">
                                         {new Date(
@@ -323,7 +339,9 @@ export default function PostIndex({
                                             수정
                                         </button>
                                         <button
-                                            onClick={() => deleteUser(post.id)}
+                                            onClick={() =>
+                                                deletePost(post.post_id)
+                                            }
                                             className="text-red-600 hover:underline"
                                         >
                                             삭제
