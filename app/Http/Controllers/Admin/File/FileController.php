@@ -21,7 +21,7 @@ class FileController extends Controller
         $dir      = "uploads/{$fileKind}";
 
         $storedPath   = $file->store($dir, 'public');
-        $fileUrl      = Storage::url($storedPath);
+        $fileUrl      = '/storage/' . $storedPath;
         $storedName   = basename($storedPath);
 
         $record = FileModel::create([

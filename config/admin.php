@@ -31,6 +31,11 @@ return [
                     'icon' => 'fa-solid fa-list',
                     'route' => 'admin.posts.index',
                 ],
+                [
+                    'title' => '게시판 설정',
+                    'icon' => 'fa-solid fa-sliders',
+                    'route' => 'admin.boards.index',
+                ],
             ],
         ],
         [

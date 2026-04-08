@@ -1,19 +1,36 @@
 <?php
 
-// app/Http/Controllers/Service/Main/MainController.php
 namespace App\Http\Controllers\Service\Main;
 
 use App\Http\Controllers\Controller;
+use App\Models\Banner\Banner as BannerModel;
+use App\Models\Board\Board as BoardModel;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class MainController extends Controller
 {
     public function index()
     {
-        // 1. 기본 레이아웃(app.blade.php) 사용 (생략 가능)
         Inertia::setRootView('app');
+        return Inertia::render('Main/Index', $this->getMainData());
+    }
 
-        // 2. 서비스용 리액트 페이지 렌더링 (Service 폴더 내 Index.jsx)
-        return Inertia::render('Main/Index');
+    // 추후 다른 버전이 필요할 경우 사용
+    // public function classic()
+    // {
+    //     Inertia::setRootView('app');
+    //     return Inertia::render('Preview/Index', $this->getMainData());
+    // }
+
+    public function getMainData()
+    {
+        return [
+            'boards'          => BoardModel::getBoards(),
+            'sideBanners1'    => BannerModel::getActiveByPosition('SIDE1'),
+            'sideBanners2'    => BannerModel::getActiveByPosition('SIDE2'),
+            'categoryBanners1' => BannerModel::getActiveByPosition('MAIN_BOARD_CATEGORY1'),
+            'categoryBanners2' => BannerModel::getActiveByPosition('MAIN_BOARD_CATEGORY2'),
+        ];
     }
 }

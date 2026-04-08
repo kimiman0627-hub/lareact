@@ -5,10 +5,20 @@ import AdminLayout from "@/Admin/Layouts/AdminLayout";
 import Pagination from "@/Admin/Components/Common/Pagination";
 import BannerCreateModal from "@/Admin/Components/Banners/BannerCreateModal";
 
+// 타입별 배지 색상
+const TYPE_COLORS = {
+    IMAGE:  "bg-sky-100 text-sky-700",
+    HTML:   "bg-violet-100 text-violet-700",
+    IFRAME: "bg-amber-100 text-amber-700",
+    SCRIPT: "bg-rose-100 text-rose-700",
+    VIDEO:  "bg-emerald-100 text-emerald-700",
+};
+
 export default function BannerList({
     list,
     total,
     params,
+    bannerTypes,
     bannerStatuses,
     bannerPositions,
 }) {
@@ -78,6 +88,7 @@ export default function BannerList({
                     isOpen={isBannerModalOpen}
                     onClose={() => setIsBannerModalOpen(false)}
                     selectedBanner={selectedBanner}
+                    bannerTypes={bannerTypes}
                     bannerStatuses={bannerStatuses}
                     bannerPositions={bannerPositions}
                     onSubmit={handleSubmit}
@@ -177,6 +188,7 @@ export default function BannerList({
                             <tr>
                                 <th className="px-4 py-4 text-sm font-semibold text-gray-600">순서</th>
                                 <th className="px-4 py-4 text-sm font-semibold text-gray-600">ID</th>
+                                <th className="px-4 py-4 text-sm font-semibold text-gray-600">타입</th>
                                 <th className="px-4 py-4 text-sm font-semibold text-gray-600">미리보기</th>
                                 <th className="px-4 py-4 text-sm font-semibold text-gray-600">제목</th>
                                 <th className="px-4 py-4 text-sm font-semibold text-gray-600">위치</th>
@@ -189,7 +201,7 @@ export default function BannerList({
                         <tbody className="divide-y divide-gray-200">
                             {list.data.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="px-6 py-10 text-center text-sm text-gray-400">
+                                    <td colSpan={10} className="px-6 py-10 text-center text-sm text-gray-400">
                                         등록된 배너가 없습니다.
                                     </td>
                                 </tr>
@@ -223,14 +235,27 @@ export default function BannerList({
                                             </div>
                                         </td>
                                         <td className="px-4 py-4 text-sm text-gray-500">{banner.banner_id}</td>
+                                        {/* 타입 배지 */}
                                         <td className="px-4 py-4">
-                                            {banner.image_url && (
-                                                <img
-                                                    src={banner.image_url}
-                                                    alt={banner.title}
-                                                    className="h-10 w-20 rounded object-cover border border-gray-200"
-                                                    onError={(e) => (e.target.style.display = "none")}
-                                                />
+                                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${TYPE_COLORS[banner.banner_type] ?? "bg-gray-100 text-gray-500"}`}>
+                                                {bannerTypes?.[banner.banner_type] ?? banner.banner_type}
+                                            </span>
+                                        </td>
+                                        {/* 미리보기: IMAGE → 썸네일, 그 외 → 코드 일부 */}
+                                        <td className="px-4 py-4">
+                                            {banner.banner_type === "IMAGE" ? (
+                                                banner.image_url && (
+                                                    <img
+                                                        src={banner.image_url}
+                                                        alt={banner.title}
+                                                        className="h-10 w-20 rounded object-cover border border-gray-200"
+                                                        onError={(e) => (e.target.style.display = "none")}
+                                                    />
+                                                )
+                                            ) : (
+                                                <span className="block max-w-30 truncate text-xs text-slate-400 font-mono bg-slate-50 border border-slate-200 rounded px-1.5 py-1">
+                                                    {banner.content ?? "—"}
+                                                </span>
                                             )}
                                         </td>
                                         <td className="px-4 py-4 text-sm font-medium text-gray-900">

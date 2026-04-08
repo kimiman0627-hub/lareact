@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\Auth\AuthController;
 use App\Http\Controllers\Admin\Main\MainController;
 use App\Http\Controllers\Admin\User\UserController;
 use App\Http\Controllers\Admin\Board\PostController;
+use App\Http\Controllers\Admin\Board\BoardController;
 use App\Http\Controllers\Admin\Banner\BannerController;
 use App\Http\Controllers\Admin\File\FileController;
 
@@ -30,6 +31,7 @@ Route::middleware(['auth:admin'])->group(function () {
     Route::resource('users', UserController::class);
 
     Route::resource('posts', PostController::class);
+    Route::resource('boards', BoardController::class);
 
     Route::patch('banners/{banner}/order', [BannerController::class, 'order'])->name('banners.order');
     Route::resource('banners', BannerController::class);

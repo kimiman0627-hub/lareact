@@ -85,10 +85,18 @@ const PostCreateModal = ({
     const [userSearch, setUserSearch] = useState("");
     const [userSuggestions, setUserSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [htmlMode, setHtmlMode] = useState(false);
     const searchTimeout = useRef(null);
     const quillRef = useRef(null);
+    const quillKey = useRef(0);
+    const uploadedFileIds = useRef([]);
 
     useEffect(() => {
+        // Quill 재초기화를 위해 key 변경
+        quillKey.current += 1;
+        setHtmlMode(false);
+        uploadedFileIds.current = [];
+
         if (selectedPost) {
             setFormData({
                 ...selectedPost,
@@ -158,6 +166,10 @@ const PostCreateModal = ({
                                     fd,
                                 );
                                 if (res.success) {
+                                    // 업로드된 file_id 추적 (게시물 저장 시 ref_id 업데이트용)
+                                    if (res.data.file_id) {
+                                        uploadedFileIds.current.push(res.data.file_id);
+                                    }
                                     const editor =
                                         quillRef.current?.getEditor();
                                     if (editor) {
@@ -247,21 +259,23 @@ const PostCreateModal = ({
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        setFormData((prev) => ({
-            ...prev,
-            // datetime-local → DB datetime 형식으로 변환
-            created_at: prev.created_at
-                ? prev.created_at.replace("T", " ") + ":00"
+
+        const submitData = {
+            ...formData,
+            created_at: formData.created_at
+                ? formData.created_at.replace("T", " ") + ":00"
                 : null,
-            is_notice: prev.is_notice ? 1 : 0, // boolean → int
-        }));
-        onSubmit(formData);
+            uploaded_file_ids: uploadedFileIds.current,
+        };
+
+        onSubmit(submitData);
     };
 
     return (
         <Modal
             isOpen={isOpen}
             onRequestClose={onClose}
+            shouldCloseOnOverlayClick={false}
             contentLabel="Post Modal"
             overlayClassName="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
             className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl mx-auto outline-none max-h-[90vh] overflow-y-auto"
@@ -392,22 +406,28 @@ const PostCreateModal = ({
                             <label className="text-sm font-medium text-slate-600">
                                 카테고리
                             </label>
-                            <select
-                                name="post_category"
-                                value={formData.post_category}
-                                onChange={handleChange}
-                                required
-                                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
-                            >
-                                <option value="">선택하세요</option>
-                                {Object.entries(postCategories).map(
-                                    ([key, label]) => (
-                                        <option key={key} value={key}>
-                                            {label}
-                                        </option>
-                                    ),
-                                )}
-                            </select>
+                            {Object.keys(postCategories).length === 0 ? (
+                                <div className="w-full rounded-xl border border-orange-300 bg-orange-50 px-4 py-3 text-sm text-orange-700">
+                                    게시판 설정에서 게시판을 먼저 등록해주세요.
+                                </div>
+                            ) : (
+                                <select
+                                    name="post_category"
+                                    value={formData.post_category}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                                >
+                                    <option value="">선택하세요</option>
+                                    {Object.entries(postCategories).map(
+                                        ([key, label]) => (
+                                            <option key={key} value={key}>
+                                                {label}
+                                            </option>
+                                        ),
+                                    )}
+                                </select>
+                            )}
                         </div>
                     </div>
 
@@ -427,30 +447,54 @@ const PostCreateModal = ({
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600">
-                            내용
-                            <span className="ml-2 text-xs text-slate-400 font-normal">
-                                이미지 삽입 시 자동 압축 후 업로드됩니다
-                            </span>
-                        </label>
-                        <div className="rounded-2xl border border-slate-300 bg-white shadow-sm">
-                            <ReactQuill
-                                ref={quillRef}
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium text-slate-600">
+                                내용
+                                <span className="ml-2 text-xs text-slate-400 font-normal">
+                                    이미지 삽입 시 자동 압축 후 업로드됩니다
+                                </span>
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => setHtmlMode((v) => !v)}
+                                className="text-xs px-3 py-1 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition"
+                            >
+                                {htmlMode ? "에디터 모드" : "HTML 편집"}
+                            </button>
+                        </div>
+                        {htmlMode ? (
+                            <textarea
                                 value={formData.content}
-                                onChange={(value) =>
+                                onChange={(e) =>
                                     setFormData((prev) => ({
                                         ...prev,
-                                        content: value,
+                                        content: e.target.value,
                                     }))
                                 }
-                                modules={quillModules}
-                                className="rounded-2xl"
-                                style={{
-                                    height: "200px",
-                                    marginBottom: "50px",
-                                }}
+                                className="w-full h-64 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-xs font-mono text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none resize-y"
+                                spellCheck={false}
                             />
-                        </div>
+                        ) : (
+                            <div className="rounded-2xl border border-slate-300 bg-white shadow-sm">
+                                <ReactQuill
+                                    key={quillKey.current}
+                                    ref={quillRef}
+                                    value={formData.content}
+                                    onChange={(value) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            content: value,
+                                        }))
+                                    }
+                                    modules={quillModules}
+                                    className="rounded-2xl"
+                                    style={{
+                                        height: "200px",
+                                        marginBottom: "50px",
+                                    }}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* 연동 배너 선택 */}

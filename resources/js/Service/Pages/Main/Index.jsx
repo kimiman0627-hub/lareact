@@ -1,14 +1,26 @@
-import React from "react";
-import ServiceLayout from "../../Layouts/ServiceLayout"; // 경로 주의
+import { usePage } from "@inertiajs/react";
+import ServiceLayout from "@/Service/Layouts/ServiceLayout";
+import BoardSection from "@/Service/Components/Board/BoardSection";
+import BannerSlot from "@/Service/Components/Banner/BannerSlot";
 
-export default function Index(props) {
+export default function MainIndex({ boards = [] }) {
+    const { props } = usePage(); // 전체 props를 가져옵니다.
+
     return (
-        <ServiceLayout>
-            <div className="bg-white p-6 rounded shadow">
-                <h2 className="text-2xl font-bold ">환영합니다!</h2>
-                <p className="text-red-500 font-bold">
-                    여기는 메인 본문 영역입니다.
-                </p>
+        <ServiceLayout theme="light">
+            <div className="space-y-4">
+                {boards.map((board, i) => (
+                    <div key={board.board_id}>
+                        <BoardSection board={board} colorIndex={i} />
+                        {/* i가 0이면 categoryBanners1, i가 1이면 categoryBanners2 호출 */}
+                        {i < boards.length - 1 && (
+                            <BannerSlot
+                                banners={props[`categoryBanners${i + 1}`]}
+                                position="MAIN_BOARD_CATEGORY"
+                            />
+                        )}
+                    </div>
+                ))}
             </div>
         </ServiceLayout>
     );

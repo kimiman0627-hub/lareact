@@ -6,6 +6,7 @@ use App\Http\Controllers\Service\Auth\AuthController;
 
 // 서비스 메인
 Route::get('/', [MainController::class, 'index']);
+Route::get('/classic', [MainController::class, 'classic']);
 
 // 페이지 보여주기
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');

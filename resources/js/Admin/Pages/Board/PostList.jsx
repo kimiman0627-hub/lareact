@@ -8,7 +8,8 @@ import "react-datepicker/dist/react-datepicker.css";
 import { ko } from "date-fns/locale";
 import { format } from "date-fns";
 import Pagination from "@/Admin/Components/Common/Pagination"; // 페이지네이션 컴포넌트
-import PostCreateModal from "@/Admin/Components/Posts/PostCreateModal"; // 게시물 등록/수정 모달 컴포넌트
+import PostCreateModal from "@/Admin/Components/Posts/PostCreateModal";
+import PostPreviewModal from "@/Admin/Components/Posts/PostPreviewModal";
 
 export default function PostIndex({
     list,
@@ -44,6 +45,13 @@ export default function PostIndex({
     const [loading, setLoading] = useState(false);
 
     const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+    const [isPreviewOpen, setIsPreviewOpen]     = useState(false);
+    const [previewPost, setPreviewPost]         = useState(null);
+
+    const openPreview = (post) => {
+        setPreviewPost(post);
+        setIsPreviewOpen(true);
+    };
 
     const { data, setData, post, put, processing, reset } = useForm({
         id: null,
@@ -143,6 +151,13 @@ export default function PostIndex({
     return (
         <AdminLayout user={auth?.user}>
             <div className="p-6 max-w-7xl mx-auto">
+                <PostPreviewModal
+                    isOpen={isPreviewOpen}
+                    onClose={() => setIsPreviewOpen(false)}
+                    post={previewPost}
+                    postStatuses={postStatuses}
+                    postCategories={postCategories}
+                />
                 <PostCreateModal
                     isOpen={isPostModalOpen}
                     onClose={() => setIsPostModalOpen(false)}
@@ -330,6 +345,12 @@ export default function PostIndex({
                                         ).toLocaleString("ko-KR")}
                                     </td>
                                     <td className="px-6 py-4 text-sm text-right space-x-3">
+                                        <button
+                                            onClick={() => openPreview(post)}
+                                            className="text-slate-500 hover:underline"
+                                        >
+                                            미리보기
+                                        </button>
                                         <button
                                             onClick={() =>
                                                 openPostEditModal(post)

@@ -8,6 +8,9 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Banner\Banner;
 use App\Lib\Banner\Banner as BannerLib;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use App\Models\File\File as FileModel;
 use Inertia\Inertia;
 
 class BannerController extends Controller
@@ -38,6 +41,7 @@ class BannerController extends Controller
             'list'            => $paginatedData,
             'total'           => $total,
             'params'          => $params,
+            'bannerTypes'     => config('config.banner_types'),
             'bannerStatuses'  => config('config.banner_statuses'),
             'bannerPositions' => config('config.banner_positions'),
         ]);
@@ -59,9 +63,15 @@ class BannerController extends Controller
 
     protected function validateBanner(Request $request)
     {
-        return $request->validate([
+        $bannerType = $request->input('banner_type', 'IMAGE');
+        $isImage    = ($bannerType === 'IMAGE');
+
+        try {
+            return $request->validate([
             'title'           => 'required|string|max:255',
-            'image_url'       => 'required|string|max:500',
+            'banner_type'     => 'required|in:' . implode(',', array_keys(config('config.banner_types'))),
+            'image_url'       => ($isImage ? 'required' : 'nullable') . '|string|max:500',
+            'content'         => ($isImage ? 'nullable' : 'required') . '|string',
             'link_url'        => 'nullable|string|max:500',
             'is_new_tab'      => 'required|in:0,1,true,false',
             'banner_status'   => 'required|in:' . implode(',', array_keys(config('config.banner_statuses'))),
@@ -70,6 +80,11 @@ class BannerController extends Controller
             'start_date'      => 'nullable|date',
             'end_date'        => 'nullable|date',
         ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('board validation 실패:', $e->errors());
+            throw $e;
+        }
+      
     }
 
     public function store(Request $request)
@@ -106,6 +121,19 @@ class BannerController extends Controller
     public function destroy($id)
     {
         $bannerLib = new BannerLib();
+        $banner    = $bannerLib->find((int) $id);
+
+        if (!$banner) {
+            return $this->error('배너를 찾을 수 없습니다.', null, 404);
+        }
+
+        // 직접 업로드된 이미지 파일이면 Storage와 files 테이블에서 함께 삭제
+        if ($banner->image_url && str_starts_with($banner->image_url, '/storage/')) {
+            $storedPath = ltrim(str_replace('/storage/', '', $banner->image_url), '/');
+            Storage::disk('public')->delete($storedPath);
+            FileModel::where('file_url', $banner->image_url)->delete();
+        }
+
         $deleted = $bannerLib->delete((int) $id);
 
         if (!$deleted) {
