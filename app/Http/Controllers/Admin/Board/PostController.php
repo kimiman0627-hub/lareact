@@ -53,13 +53,14 @@ class PostController extends Controller
         $postCategories = collect($boardRows)->pluck('board_name', 'category')->all();
 
         return Inertia::render('Board/PostList', [
-            'list'           => $paginatedData,
-            'total'          => $total,
-            'params'         => $params,
-            'postTypes'      => config('config.post_types'),
-            'postStatuses'   => config('config.post_statuses'),
-            'postCategories' => $postCategories,
-            'banners'        => $banners,
+            'list'            => $paginatedData,
+            'total'           => $total,
+            'params'          => $params,
+            'postTypes'       => config('config.post_types'),
+            'postStatuses'    => config('config.post_statuses'),
+            'postCategories'  => $postCategories,
+            'postSources'     => config('config.post_sources'),
+            'banners'         => $banners,
             'bannerPositions' => config('config.banner_positions'),
         ]);
     }
@@ -80,6 +81,7 @@ class PostController extends Controller
             'post_status' => 'nullable|in:' . implode(',', array_keys(config('config.post_statuses'))),
             'is_notice'   => 'nullable|boolean',
             'post_category' => 'nullable|string|max:100',
+            'source'        => 'nullable|string|max:50',
         ]);
         return $params;
     }

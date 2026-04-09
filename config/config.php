@@ -2,7 +2,20 @@
 
 return [
 
-   'post_types' => [
+    'user_roles' => [
+        'GENERAL' => '일반회원',
+        'TEST'    => '테스트회원',
+        'ADMIN'   => '관리자',
+    ],
+
+    'post_sources' => [
+        'DOGDRIP'  => '개드립',
+        'DCINSIDE' => 'DC인사이드',
+        'ETOLAND'  => '이토랜드',
+        'THEQOO'   => '더쿠',
+    ],
+
+    'post_types' => [
         'NORMAL' => '일반',
     ],
 
@@ -78,5 +91,10 @@ return [
             'DAILY'    => '일 1회',
             'PER_POST' => '작성마다',
         ],
+    ],
+
+    'board_option_defaults' => [
+        'show_anonymous' => false,
+        'secret_comment' => false,
     ],
 ];

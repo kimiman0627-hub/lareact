@@ -79,6 +79,8 @@ class BoardController extends Controller
                 'options.comment_enabled'    => 'nullable|boolean',
                 'options.comment_permission' => 'nullable|in:ALL,MEMBER,ADMIN',
                 'options.allow_anonymous'    => 'nullable|boolean',
+                'options.show_anonymous'     => 'nullable|boolean',
+                'options.secret_comment'     => 'nullable|boolean',
                 // 포인트
                 'options.point_enabled'      => 'nullable|boolean',
                 'options.point_amount'       => 'nullable|integer|min:0',

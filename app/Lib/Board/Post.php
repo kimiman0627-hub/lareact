@@ -50,6 +50,30 @@ class Post
             }
         }
 
+        if (!empty($this->params['post_status'] ?? null)) {
+            $this->where('P.post_status', '=', $this->params['post_status']);
+        }
+
+        if (!empty($this->params['post_type'] ?? null)) {
+            $this->where('P.post_type', '=', $this->params['post_type']);
+        }
+
+        if (!empty($this->params['post_category'] ?? null)) {
+            $this->where('P.post_category', '=', $this->params['post_category']);
+        }
+
+        if (!empty($this->params['source'] ?? null)) {
+            if ($this->params['source'] === 'DIRECT') {
+                $this->whereRaw('P.source IS NULL');
+            } else {
+                $this->where('P.source', '=', $this->params['source']);
+            }
+        }
+
+        if (isset($this->params['is_notice']) && $this->params['is_notice'] !== '') {
+            $this->where('P.is_notice', '=', $this->params['is_notice'] ? 'true' : 'false');
+        }
+
         if (!empty($this->params['start_date'] ?? null) && !empty($this->params['end_date'] ?? null)) {
             $this->whereBetween('P.created_at', $this->params['start_date'], $this->params['end_date']);
         }

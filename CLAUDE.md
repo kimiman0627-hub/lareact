@@ -95,7 +95,7 @@ app/
 │   ├── File/            # 파일 모델
 │   └── User/            # 유저 모델
 routes/
-├── web.php              # 일반 라우트
+├── web.php              # 일반 라우트 (/, /board/{category}, /post/{id})
 ├── admin.php            # 관리자 라우트
 └── console.php
 config/
@@ -112,7 +112,11 @@ resources/
 │   ├── admin.jsx        # 관리자 앱 엔트리포인트
 │   ├── service.jsx      # 서비스 앱 엔트리포인트
 │   ├── Admin/           # 관리자 React 컴포넌트
-│   ├── Service/         # 서비스 React 컴포넌트
+│   ├── Service/
+│   │   ├── Pages/Main/Index.jsx       # 메인페이지
+│   │   ├── Pages/Board/BoardList.jsx  # 게시판 목록 (/board/{category})
+│   │   ├── Pages/Board/PostDetail.jsx # 게시글 상세 (/post/{id})
+│   │   └── ...기타 컴포넌트/레이아웃
 │   └── Utils/           # 공통 유틸리티
 ├── css/
 │   ├── app.css          # 서비스 스타일
@@ -148,6 +152,11 @@ php artisan test
 php artisan config:clear
 php artisan cache:clear
 php artisan route:clear
+
+# 크롤링
+php artisan crawl:dogdrip   # 개드립(dogdrip.net) 크롤링
+php artisan crawl:dcinside  # DCInside 크롤링
+php artisan crawl:etoland   # 이토랜드(etoland.co.kr) 크롤링
 ```
 
 ---

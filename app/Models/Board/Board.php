@@ -2,15 +2,11 @@
 
 namespace App\Models\Board;
 
-use Illuminate\Database\Console\DbCommand;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
 class Board extends Model
 {
-    use SoftDeletes;
-
     protected $primaryKey = 'board_id';
     protected $guarded = ['board_id'];
 

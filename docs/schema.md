@@ -33,6 +33,7 @@ PostgreSQL 사용. 마이그레이션 파일 기준으로 작성.
 | email | varchar | UNIQUE | |
 | email_verified_at | timestamp | nullable | |
 | password | varchar | | bcrypt |
+| user_role | varchar | default: GENERAL | 회원 구분 (GENERAL/TEST/ADMIN) |
 | remember_token | varchar | nullable | |
 | created_at / updated_at | timestamp | | |
 
@@ -136,6 +137,21 @@ PostgreSQL 사용. 마이그레이션 파일 기준으로 작성.
 저장 경로 패턴:
 - 게시글 이미지: `uploads/post/{post_id}/{uuid}.jpg`
 - 배너 이미지: `uploads/banner/{banner_id}/{uuid}.jpg`
+
+---
+
+## comments
+
+게시글 댓글.
+
+| 컬럼 | 타입 | 옵션 | 설명 |
+|---|---|---|---|
+| comment_id | bigint | PK, auto | |
+| post_id | bigint | NOT NULL, indexed | posts.post_id 참조 |
+| user_id | bigint | NOT NULL | users.id 참조 |
+| content | text | NOT NULL | 댓글 내용 |
+| deleted_at | timestamp | nullable | soft delete |
+| created_at / updated_at | timestamp | | |
 
 ---
 

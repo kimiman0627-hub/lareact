@@ -7,6 +7,8 @@ const DEFAULT_OPTIONS = {
     comment_enabled: true,
     comment_permission: "MEMBER",
     allow_anonymous: false,
+    show_anonymous: false,
+    secret_comment: false,
     point_enabled: false,
     point_amount: 0,
     point_cycle: "ONCE",
@@ -317,6 +319,28 @@ export default function BoardModal({
                                         setOpt(
                                             "allow_anonymous",
                                             !form.options.allow_anonymous,
+                                        )
+                                    }
+                                />
+                                <Toggle
+                                    label="익명 노출"
+                                    desc="작성자 이름을 익명으로 표시합니다"
+                                    checked={form.options.show_anonymous}
+                                    onChange={() =>
+                                        setOpt(
+                                            "show_anonymous",
+                                            !form.options.show_anonymous,
+                                        )
+                                    }
+                                />
+                                <Toggle
+                                    label="비밀댓글 허용"
+                                    desc="작성자와 관리자만 볼 수 있는 비밀댓글을 허용합니다"
+                                    checked={form.options.secret_comment}
+                                    onChange={() =>
+                                        setOpt(
+                                            "secret_comment",
+                                            !form.options.secret_comment,
                                         )
                                     }
                                 />
