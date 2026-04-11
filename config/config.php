@@ -13,6 +13,7 @@ return [
         'DCINSIDE' => 'DC인사이드',
         'ETOLAND'  => '이토랜드',
         'THEQOO'   => '더쿠',
+        'FOMOS'    => '포모스',
     ],
 
     'post_types' => [
@@ -96,5 +97,6 @@ return [
     'board_option_defaults' => [
         'show_anonymous' => false,
         'secret_comment' => false,
+        'comment_depth'  => 2,
     ],
 ];

@@ -32,10 +32,16 @@ return [
                     'route' => 'admin.posts.index',
                 ],
                 [
+                    'title' => '댓글 목록',
+                    'icon' => 'fa-solid fa-comments',
+                    'route' => 'admin.comments.index',
+                ],
+                [
                     'title' => '게시판 설정',
                     'icon' => 'fa-solid fa-sliders',
                     'route' => 'admin.boards.index',
                 ],
+                
             ],
         ],
         [

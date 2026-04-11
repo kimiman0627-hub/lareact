@@ -352,7 +352,12 @@ export default function PostIndex({
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-sm font-medium text-gray-900 max-w-xs">
-                                            <div className="truncate">{post.title}</div>
+                                            <div className="truncate">
+                                                {post.title}
+                                                {post.has_image && (
+                                                    <i className="fa-regular fa-image ml-1.5 text-slate-400 text-xs" />
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                                             {post.name}

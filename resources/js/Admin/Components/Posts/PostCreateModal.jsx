@@ -3,6 +3,7 @@ import Modal from "react-modal";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { ajax } from "@/Utils/network";
+import UserSearchInput from "@/Admin/Components/Common/UserSearchInput";
 
 // DB datetime("2026-04-06 12:34:56" 또는 "2026-04-06T12:34:56.000Z") → datetime-local 입력값("2026-04-06T12:34")
 const toDatetimeLocal = (val) => {
@@ -82,11 +83,8 @@ const PostCreateModal = ({
         created_at: nowDatetimeLocal(),
         banner_ids: [],
     });
-    const [userSearch, setUserSearch] = useState("");
-    const [userSuggestions, setUserSuggestions] = useState([]);
-    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [userInitialText, setUserInitialText] = useState("");
     const [htmlMode, setHtmlMode] = useState(false);
-    const searchTimeout = useRef(null);
     const quillRef = useRef(null);
     const quillKey = useRef(0);
     const uploadedFileIds = useRef([]);
@@ -100,18 +98,15 @@ const PostCreateModal = ({
         if (selectedPost) {
             setFormData({
                 ...selectedPost,
-                // DB datetime → datetime-local 형식으로 변환
                 created_at:
                     toDatetimeLocal(selectedPost.created_at) ||
                     nowDatetimeLocal(),
                 banner_ids: selectedPost.banner_ids ?? [],
             });
-            // name 키로 회원 정보 세팅 (DB 쿼리에서 U.name → name 으로 반환)
-            selectUser({
-                id: selectedPost.user_id,
-                name: selectedPost.name,
-                email: selectedPost.email,
-            });
+            // 수정 모드: 기존 회원 정보를 UserSearchInput 초기값으로 표시
+            const name = selectedPost.name ?? "";
+            const email = selectedPost.email ?? "";
+            setUserInitialText(name && email ? `${name} (${email})` : name || email);
         } else {
             setFormData({
                 id: "",
@@ -125,12 +120,8 @@ const PostCreateModal = ({
                 created_at: nowDatetimeLocal(),
                 banner_ids: [],
             });
-            setUserSearch("");
+            setUserInitialText("");
         }
-
-        return () => {
-            if (searchTimeout.current) clearTimeout(searchTimeout.current);
-        };
     }, [selectedPost, isOpen]);
 
     // Quill 이미지 핸들러: 파일 선택 → Canvas 압축 → 서버 업로드 → URL 삽입
@@ -193,50 +184,6 @@ const PostCreateModal = ({
         [],
     );
 
-    const fetchUserSuggestions = async (keyword) => {
-        try {
-            const json = await ajax.get("/admin/users/search", { keyword });
-            if (json.success) {
-                setUserSuggestions(json.data || []);
-                setShowSuggestions(true);
-            } else {
-                setUserSuggestions([]);
-                setShowSuggestions(false);
-            }
-        } catch (error) {
-            console.error("User search failed", error);
-            setUserSuggestions([]);
-            setShowSuggestions(false);
-        }
-    };
-
-    const handleUserSearchChange = (value) => {
-        setUserSearch(value);
-        setFormData((prev) => ({ ...prev, user_id: "" }));
-
-        if (searchTimeout.current) clearTimeout(searchTimeout.current);
-
-        if (value.trim().length >= 2) {
-            searchTimeout.current = setTimeout(() => {
-                fetchUserSuggestions(value.trim());
-            }, 250);
-        } else {
-            setUserSuggestions([]);
-            setShowSuggestions(false);
-        }
-    };
-
-    const selectUser = (user) => {
-        setFormData((prev) => ({ ...prev, user_id: user.id }));
-        setUserSearch(
-            user.name && user.email
-                ? `${user.name} (${user.email})`
-                : user.name || user.email || "",
-        );
-        setUserSuggestions([]);
-        setShowSuggestions(false);
-    };
-
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData((prev) => ({
@@ -297,44 +244,17 @@ const PostCreateModal = ({
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="grid gap-4 md:grid-cols-2">
                         {/* 회원정보 */}
-                        <div className="relative space-y-2">
+                        <div className="space-y-2">
                             <label className="text-sm font-medium text-slate-600">
                                 회원정보
                             </label>
-                            <input
-                                type="text"
-                                name="user_search"
-                                value={userSearch}
-                                onChange={(e) =>
-                                    handleUserSearchChange(e.target.value)
+                            <UserSearchInput
+                                key={`${selectedPost?.id}-${isOpen}`}
+                                initialText={userInitialText}
+                                onSelect={(user) =>
+                                    setFormData((prev) => ({ ...prev, user_id: user ? user.id : "" }))
                                 }
-                                autoComplete="off"
-                                placeholder="회원 이름 또는 이메일 검색"
-                                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
                             />
-                            <input
-                                type="hidden"
-                                name="user_id"
-                                value={formData.user_id}
-                            />
-                            {showSuggestions && userSuggestions.length > 0 && (
-                                <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-2xl border border-slate-200 bg-white shadow-lg">
-                                    {userSuggestions.map((user) => (
-                                        <li
-                                            key={user.id}
-                                            onClick={() => selectUser(user)}
-                                            className="cursor-pointer px-4 py-3 text-sm text-slate-700 hover:bg-slate-100"
-                                        >
-                                            <div className="font-medium">
-                                                {user.name}
-                                            </div>
-                                            <div className="text-xs text-slate-500">
-                                                {user.email} · ID {user.id}
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
                         </div>
 
                         {/* 작성일 - datetime-local 타입으로 Y-m-d H:i 형식 표시 */}

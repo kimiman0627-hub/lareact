@@ -6,6 +6,7 @@ const DEFAULT_OPTIONS = {
     write_permission: "MEMBER",
     comment_enabled: true,
     comment_permission: "MEMBER",
+    comment_depth: 2,
     allow_anonymous: false,
     show_anonymous: false,
     secret_comment: false,
@@ -298,19 +299,32 @@ export default function BoardModal({
                                         )
                                     }
                                 />
-                                <div className="pt-2">
-                                    <SelectField
-                                        label="댓글 권한"
-                                        value={form.options.comment_permission}
-                                        onChange={(e) =>
-                                            setOpt(
-                                                "comment_permission",
-                                                e.target.value,
-                                            )
-                                        }
-                                        options={permissions}
-                                    />
-                                </div>
+                                {form.options.comment_enabled && (
+                                    <div className="pt-2 grid gap-4 md:grid-cols-2">
+                                        <SelectField
+                                            label="댓글 작성 권한"
+                                            value={form.options.comment_permission}
+                                            onChange={(e) =>
+                                                setOpt("comment_permission", e.target.value)
+                                            }
+                                            options={permissions}
+                                        />
+                                        <SelectField
+                                            label="댓글 깊이"
+                                            value={String(form.options.comment_depth)}
+                                            onChange={(e) =>
+                                                setOpt("comment_depth", Number(e.target.value))
+                                            }
+                                            options={{
+                                                "1": "1단계 — 댓글만",
+                                                "2": "2단계 — 대댓글 허용 (기본)",
+                                                "3": "3단계",
+                                                "4": "4단계",
+                                                "5": "5단계",
+                                            }}
+                                        />
+                                    </div>
+                                )}
                                 <Toggle
                                     label="익명 작성 허용"
                                     desc="비로그인 사용자도 게시글을 작성할 수 있습니다"

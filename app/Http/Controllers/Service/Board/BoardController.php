@@ -45,6 +45,7 @@ class BoardController extends Controller
                 'p.post_id', 'p.title', 'p.is_notice', 'p.hits',
                 'p.comment_count', 'p.created_at', 'p.source',
                 'u.name as author',
+                DB::raw("EXISTS (SELECT 1 FROM files WHERE file_kind = 'POST' AND ref_id = p.post_id) AS has_image"),
             ]);
 
         $paginated = new LengthAwarePaginator(
@@ -84,16 +85,24 @@ class BoardController extends Controller
 
         DB::table('posts')->where('post_id', $id)->increment('hits');
 
+        $board = DB::table('boards')
+            ->where('category', $post->category)
+            ->first();
+
+        $boardOptions = $board ? json_decode($board->options ?? '{}', true) : [];
+        $maxDepth     = (int) ($boardOptions['comment_depth'] ?? 2);
+
         $comments = DB::table('comments as c')
             ->join('users as u', 'c.user_id', '=', 'u.id')
             ->where('c.post_id', $id)
             ->whereNull('c.deleted_at')
             ->orderBy('c.created_at')
-            ->get(['c.comment_id', 'c.content', 'c.created_at', 'c.user_id', 'u.name as author']);
+            ->get(['c.comment_id', 'c.parent_id', 'c.depth', 'c.content', 'c.created_at', 'c.user_id', 'u.name as author']);
 
         return Inertia::render('Board/PostDetail', [
-            'post'     => $post,
-            'comments' => $comments,
+            'post'      => $post,
+            'comments'  => $comments,
+            'maxDepth'  => $maxDepth,
         ]);
     }
 }

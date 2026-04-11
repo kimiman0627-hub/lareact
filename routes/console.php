@@ -18,4 +18,7 @@ Schedule::command('crawl:dcinside')->hourlyAt(30);
 Schedule::command('crawl:etoland')->hourlyAt(15); 
 
 // 더쿠 크롤링 - 매시간 45분에 실행 (다른 크롤러와 시간 분산)
-Schedule::command('crawl:theqoo')->hourlyAt(45); 
+Schedule::command('crawl:theqoo')->hourlyAt(45);
+
+// 포모스 크롤링 - 매시간 10분에 실행
+Schedule::command('crawl:fomos')->hourlyAt(10);

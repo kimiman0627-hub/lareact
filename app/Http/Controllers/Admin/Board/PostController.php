@@ -226,6 +226,25 @@ class PostController extends Controller
             ->delete();
     }
 
+    public function search(Request $request)
+    {
+        $keyword = trim($request->input('keyword', ''));
+
+        $query = DB::table('posts')
+            ->where('post_status', 'ACTIVE')
+            ->whereNull('deleted_at');
+
+        if ($keyword !== '') {
+            $query->where('title', 'ilike', '%' . $keyword . '%');
+        }
+
+        $posts = $query->orderByDesc('created_at')
+            ->limit(15)
+            ->get(['post_id', 'title', 'post_category', 'created_at']);
+
+        return response()->json($posts);
+    }
+
     public function destroy($id)
     {
         // 연결된 파일 스토리지 + DB에서 삭제

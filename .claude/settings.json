@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s https://www.fomos.kr/ -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0.0.0 Safari/537.36' -H 'Accept-Language: ko-KR,ko;q=0.9' --max-time 20)",
+      "Bash(grep -oE 'href=\"[^\"]{5,80}\"')",
+      "Bash(curl -s 'https://www.fomos.kr/esports/news_list?news_cate_id=1' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0.0.0 Safari/537.36' -H 'Accept-Language: ko-KR,ko;q=0.9' --max-time 20)",
+      "Bash(curl -s 'https://www.fomos.kr/esports/news_view?entry_id=152402&news_cate_id=1' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0.0.0 Safari/537.36' -H 'Accept-Language: ko-KR,ko;q=0.9' --max-time 20)",
+      "Bash(curl -s 'https://www.fomos.kr/esports/news_view?entry_id=152402&news_cate_id=1' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0.0.0 Safari/537.36' --max-time 20)",
+      "Bash(curl -s 'https://www.fomos.kr/commune/article_list?bbs_id=32' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0.0.0 Safari/537.36' --max-time 20)",
+      "Bash(curl -s 'https://www.fomos.kr/enter/news_list?cate_id1=02' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0.0.0 Safari/537.36' --max-time 20)",
+      "Bash(curl -s 'https://www.fomos.kr/commune/article_view?bbs_id=32&indexno=779' -H 'User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0.0.0 Safari/537.36' --max-time 20)"
+    ]
+  }
+}

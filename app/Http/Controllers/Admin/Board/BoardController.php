@@ -78,6 +78,7 @@ class BoardController extends Controller
                 'options.write_permission'   => 'nullable|in:ALL,MEMBER,ADMIN',
                 'options.comment_enabled'    => 'nullable|boolean',
                 'options.comment_permission' => 'nullable|in:ALL,MEMBER,ADMIN',
+                'options.comment_depth'      => 'nullable|integer|min:1|max:5',
                 'options.allow_anonymous'    => 'nullable|boolean',
                 'options.show_anonymous'     => 'nullable|boolean',
                 'options.secret_comment'     => 'nullable|boolean',

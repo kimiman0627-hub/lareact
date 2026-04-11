@@ -69,6 +69,9 @@ export default function BoardList({ board, list }) {
                                 {/* 제목 */}
                                 <span className="flex-1 text-sm text-slate-700 group-hover:text-blue-600 transition leading-snug truncate min-w-0">
                                     {post.title}
+                                    {post.has_image && (
+                                        <i className="fa-regular fa-image ml-1 text-slate-400 text-[11px]" />
+                                    )}
                                     {post.comment_count > 0 && (
                                         <span className="ml-1 text-blue-400 font-semibold text-xs">
                                             [{post.comment_count}]

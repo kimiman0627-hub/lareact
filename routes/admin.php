@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\Main\MainController;
 use App\Http\Controllers\Admin\User\UserController;
 use App\Http\Controllers\Admin\Board\PostController;
 use App\Http\Controllers\Admin\Board\BoardController;
+use App\Http\Controllers\Admin\Board\CommentController;
 use App\Http\Controllers\Admin\Banner\BannerController;
 use App\Http\Controllers\Admin\File\FileController;
 
@@ -30,8 +31,14 @@ Route::middleware(['auth:admin'])->group(function () {
     Route::get('users/search', [UserController::class, 'search'])->name('admin.users.search');
     Route::resource('users', UserController::class);
 
+    Route::get('posts/search', [PostController::class, 'search'])->name('posts.search');
     Route::resource('posts', PostController::class);
     Route::resource('boards', BoardController::class);
+
+    Route::get('comments',           [CommentController::class, 'index'])->name('comments.index');
+    Route::post('comments',          [CommentController::class, 'store'])->name('comments.store');
+    Route::put('comments/{id}',      [CommentController::class, 'update'])->name('comments.update');
+    Route::delete('comments/{id}',   [CommentController::class, 'destroy'])->name('comments.destroy');
 
     Route::patch('banners/{banner}/order', [BannerController::class, 'order'])->name('banners.order');
     Route::resource('banners', BannerController::class);
