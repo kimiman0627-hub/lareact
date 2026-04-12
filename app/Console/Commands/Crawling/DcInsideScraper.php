@@ -21,14 +21,15 @@ class DcInsideScraper extends BaseScraper
         'programming'   => 'free',
         'stock_new1'    => 'stock',
         'baseball_new9' => 'sports',
-        'soccer_new'    => 'sports',
+        'soccer'        => 'sports',
     ];
 
+    // mgallery는 URL 경로에 /board/ 가 추가됨
     private const GALLERY_TYPE = [
         'programming'   => 'mgallery',
         'stock_new1'    => 'board',
         'baseball_new9' => 'board',
-        'soccer_new'    => 'board',
+        'soccer'        => 'board',
     ];
 
     private const PAGES_PER_GALLERY = 2;
@@ -55,7 +56,9 @@ class DcInsideScraper extends BaseScraper
 
         for ($page = 1; $page <= self::PAGES_PER_GALLERY; $page++) {
             try {
-                $listUrl   = self::BASE_URL . "/{$gallType}/lists/?id={$galleryId}&page={$page}";
+                // mgallery는 /mgallery/board/lists/, 일반은 /board/lists/
+                $pathPrefix = $gallType === 'mgallery' ? '/mgallery/board/lists/' : '/board/lists/';
+                $listUrl    = self::BASE_URL . $pathPrefix . "?id={$galleryId}&page={$page}";
                 $html      = $this->fetchHtml($client, $listUrl);
                 if (!$html) break;
 

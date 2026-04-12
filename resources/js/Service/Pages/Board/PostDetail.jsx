@@ -3,6 +3,7 @@ import { Link, useForm, usePage } from "@inertiajs/react";
 import ServiceLayout from "@/Service/Layouts/ServiceLayout";
 import { timeAgo, fmtHits } from "@/Service/Components/Board/BoardCard";
 import axios from "axios";
+import ReportModal from "@/Service/Components/Board/ReportModal";
 
 
 /** 댓글 입력 폼 */
@@ -212,6 +213,7 @@ function LikeBar({ postId, initialLike, initialDislike, initialUserType, useLike
 export default function PostDetail({ post, comments = [], maxDepth = 2, boardOptions = {}, userLikeType = null, prevPost = null, nextPost = null }) {
     const { auth } = usePage().props;
     const authUser  = auth?.user ?? null;
+    const [showReport, setShowReport] = useState(false);
 
     // 최상위 댓글만 뽑아서 렌더링 (대댓글은 재귀로 처리)
     const topLevel = comments.filter(c => !c.parent_id);
@@ -316,12 +318,23 @@ export default function PostDetail({ post, comments = [], maxDepth = 2, boardOpt
                 )}
 
                 {/* 하단 */}
-                <div className="px-5 py-3 border-t border-gray-100">
+                <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
                     <Link href={`/board/${post.category}`} className="text-sm text-slate-500 hover:text-blue-500 transition">
                         ← 목록
                     </Link>
+                    <button
+                        onClick={() => setShowReport(true)}
+                        className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 transition"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H13l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                        </svg>
+                        신고
+                    </button>
                 </div>
             </article>
+
+            {showReport && <ReportModal postId={post.post_id} onClose={() => setShowReport(false)} />}
 
             {/* 댓글 영역 */}
             <section className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 px-5 py-4">

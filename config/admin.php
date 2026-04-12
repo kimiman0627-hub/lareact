@@ -62,6 +62,23 @@ return [
             ],
         ],
         [
+            'title' => '문의/신고',
+            'icon' => 'fa-solid fa-envelope',
+            'route' => 'admin.inquiries.index',
+            'submenu' => [
+                [
+                    'title' => '문의 목록',
+                    'icon' => 'fa-solid fa-list',
+                    'route' => 'admin.inquiries.index',
+                ],
+                [
+                    'title' => '신고 목록',
+                    'icon' => 'fa-solid fa-flag',
+                    'route' => 'admin.reports.index',
+                ],
+            ],
+        ],
+        [
             'title' => '로그',
             'icon' => 'fa-solid fa-spider',
             'route' => 'admin.crawl-logs.index',

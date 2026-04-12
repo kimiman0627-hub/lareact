@@ -53,6 +53,29 @@ class HandleInertiaRequests extends Middleware
                 ->orderBy('board_id')
                 ->get(['board_id', 'board_name', 'category'])
                 ->toArray(),
+
+            // 사이드바 현황 통계 (캐시 적용)
+            // today_posts / total_members: 3분 캐시 (자주 바뀌지 않음)
+            // online_users: 1분 캐시 (세션 기반 실시간성 유지)
+            'siteStats' => [
+                'today_posts'   => cache()->remember('stats.today_posts', 180, fn () =>
+                    DB::table('posts')
+                        ->where('post_status', 'ACTIVE')
+                        ->whereNull('deleted_at')
+                        ->whereDate('created_at', today())
+                        ->count()
+                ),
+                'total_members' => cache()->remember('stats.total_members', 180, fn () =>
+                    DB::table('users')
+                        ->whereNot('user_role', 'TEST')
+                        ->count()
+                ),
+                'online_users'  => cache()->remember('stats.online_users', 60, fn () =>
+                    DB::table('sessions')
+                        ->where('last_activity', '>=', now()->subMinutes(5)->timestamp)
+                        ->count()
+                ),
+            ],
         ]);
     }
 }

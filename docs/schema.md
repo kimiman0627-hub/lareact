@@ -20,6 +20,7 @@ PostgreSQL 사용. 마이그레이션 파일 기준으로 작성.
 | files | 2026-04-06 | 업로드 파일 |
 | boards | 2026-04-08 | 게시판 설정 |
 | crawl_logs | 2026-04-12 | 크롤링 실행 이력 |
+| inquiries  | 2026-04-12 | 1:1/제휴 문의 |
 
 ---
 
@@ -214,4 +215,25 @@ PostgreSQL 사용. 마이그레이션 파일 기준으로 작성.
 | error_log | jsonb | nullable | 에러 상세 [{message, time}, ...] 최대 200건 |
 | started_at | timestamp | | 크롤링 시작 시각 |
 | finished_at | timestamp | nullable | 크롤링 종료 시각 (RUNNING 중이면 null) |
+| created_at / updated_at | timestamp | | |
+
+---
+
+## inquiries
+
+1:1 문의 및 제휴 문의.
+
+| 컬럼 | 타입 | 옵션 | 설명 |
+|---|---|---|---|
+| id | bigint | PK, auto | |
+| type | varchar(20) | default: SUPPORT, indexed | SUPPORT / PARTNERSHIP |
+| user_id | bigint | nullable | 로그인 유저면 연결 |
+| name | varchar(100) | NOT NULL | 문의자 이름 |
+| email | varchar(255) | NOT NULL | 문의자 이메일 |
+| phone | varchar(30) | nullable | 연락처 |
+| title | varchar(200) | NOT NULL | 문의 제목 |
+| content | text | NOT NULL | 문의 내용 |
+| status | varchar(20) | default: PENDING, indexed | PENDING / ANSWERED / CLOSED |
+| answer | text | nullable | 관리자 답변 |
+| answered_at | timestamp | nullable | 답변 일시 |
 | created_at / updated_at | timestamp | | |

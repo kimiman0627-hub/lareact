@@ -10,6 +10,8 @@ use App\Http\Controllers\Admin\Board\LikeController;
 use App\Http\Controllers\Admin\Banner\BannerController;
 use App\Http\Controllers\Admin\File\FileController;
 use App\Http\Controllers\Admin\Crawl\CrawlLogController;
+use App\Http\Controllers\Admin\Inquiry\InquiryController as AdminInquiryController;
+use App\Http\Controllers\Admin\Report\ReportController as AdminReportController;
 
 // 관리자 
 
@@ -51,5 +53,14 @@ Route::middleware(['auth:admin'])->group(function () {
     // 크롤링 로그
     Route::get('crawl-logs',          [CrawlLogController::class, 'index'])->name('crawl-logs.index');
     Route::get('crawl-logs/{id}',     [CrawlLogController::class, 'show'])->name('crawl-logs.show');
+
+    // 문의 관리
+    Route::get('inquiries',               [AdminInquiryController::class, 'index'])->name('inquiries.index');
+    Route::get('inquiries/{id}',          [AdminInquiryController::class, 'show'])->name('inquiries.show');
+    Route::post('inquiries/{id}/answer',  [AdminInquiryController::class, 'answer'])->name('inquiries.answer');
+
+    // 신고 관리
+    Route::get('reports',          [AdminReportController::class, 'index'])->name('reports.index');
+    Route::patch('reports/{id}',   [AdminReportController::class, 'update'])->name('reports.update');
 });
 

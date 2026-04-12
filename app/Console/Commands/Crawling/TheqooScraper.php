@@ -22,7 +22,7 @@ class TheqooScraper extends BaseScraper
     private const BOARDS = [
         'hot'    => 'free',
         'square' => 'free',
-        'talk'   => 'free',
+        // 'talk' 는 로그인 필요 게시판으로 403 반환 — 제외
         'ktalk'  => 'enter',
         'dyb'    => 'enter',
         'stock'  => 'stock',

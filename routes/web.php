@@ -8,6 +8,9 @@ use App\Http\Controllers\Service\Board\PopularController;
 use App\Http\Controllers\Service\Board\CommentController;
 use App\Http\Controllers\Service\Board\LikeController;
 use App\Http\Controllers\Service\Search\SearchController;
+use App\Http\Controllers\Service\User\MypageController;
+use App\Http\Controllers\Service\Inquiry\InquiryController;
+use App\Http\Controllers\Service\Board\ReportController;
 
 // 서비스 메인
 Route::get('/', [MainController::class, 'index']);
@@ -22,13 +25,25 @@ Route::get('/popular', [PopularController::class, 'index'])->name('popular');
 Route::get('/board/{category}', [BoardController::class, 'index'])->name('board.index');
 Route::get('/post/{id}', [BoardController::class, 'show'])->name('post.show');
 
-// 댓글 (로그인 필요)
+// 로그인 필요
 Route::middleware('auth')->group(function () {
+    // 댓글
     Route::post('/post/{id}/comments', [CommentController::class, 'store'])->name('comment.store');
     Route::delete('/comment/{id}', [CommentController::class, 'destroy'])->name('comment.destroy');
     Route::post('/post/{id}/like', [LikeController::class, 'toggle'])->name('post.like');
+    Route::post('/post/{id}/report', [ReportController::class, 'store'])->name('post.report');
+
+    // 마이페이지
+    Route::get('/mypage', [MypageController::class, 'index'])->name('mypage');
+    Route::post('/mypage/password', [MypageController::class, 'changePassword'])->name('mypage.password');
+    Route::get('/mypage/inquiry/{id}', [MypageController::class, 'inquiryDetail'])->name('mypage.inquiry.detail');
 });
 Route::get('/classic', [MainController::class, 'classic']);
+
+// 문의하기
+Route::get('/inquiry', [InquiryController::class, 'create'])->name('inquiry.create');
+Route::post('/inquiry', [InquiryController::class, 'store'])->name('inquiry.store');
+Route::get('/inquiry/complete', [InquiryController::class, 'complete'])->name('inquiry.complete');
 
 // 페이지 보여주기
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');

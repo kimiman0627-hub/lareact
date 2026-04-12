@@ -83,6 +83,27 @@ export default function TopBar() {
                                             <p className="text-xs text-slate-400 truncate">{user.email}</p>
                                         </div>
                                         <Link
+                                            href="/mypage"
+                                            onClick={() => setDropOpen(false)}
+                                            className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:text-blue-500 hover:bg-slate-50 transition block"
+                                        >
+                                            마이페이지
+                                        </Link>
+                                        <Link
+                                            href="/mypage?tab=inquiries"
+                                            onClick={() => setDropOpen(false)}
+                                            className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:text-blue-500 hover:bg-slate-50 transition block"
+                                        >
+                                            내문의
+                                        </Link>
+                                        <Link
+                                            href="/mypage?tab=password"
+                                            onClick={() => setDropOpen(false)}
+                                            className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:text-blue-500 hover:bg-slate-50 transition block"
+                                        >
+                                            비밀번호 변경
+                                        </Link>
+                                        <Link
                                             href="/logout"
                                             method="post"
                                             as="button"

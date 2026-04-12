@@ -36,10 +36,12 @@ function NoticeWidget() {
 }
 
 function StatsWidget() {
+    const { siteStats = {} } = usePage().props;
+
     const items = [
-        { label: "오늘 게시글", value: "—" },
-        { label: "전체 회원", value: "—" },
-        { label: "현재 접속자", value: "—" },
+        { label: "오늘 게시글", value: siteStats.today_posts?.toLocaleString() ?? "—" },
+        { label: "전체 회원",   value: siteStats.total_members?.toLocaleString() ?? "—" },
+        { label: "현재 접속자", value: siteStats.online_users?.toLocaleString() ?? "—" },
     ];
 
     return (

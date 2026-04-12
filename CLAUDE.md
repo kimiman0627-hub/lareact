@@ -116,6 +116,7 @@ resources/
 │   │   ├── Pages/Main/Index.jsx       # 메인페이지
 │   │   ├── Pages/Board/BoardList.jsx  # 게시판 목록 (/board/{category})
 │   │   ├── Pages/Board/PostDetail.jsx # 게시글 상세 (/post/{id})
+│   │   ├── Pages/User/MyPage.jsx      # 마이페이지 (/mypage?tab=posts|comments)
 │   │   └── ...기타 컴포넌트/레이아웃
 │   └── Utils/           # 공통 유틸리티
 ├── css/
