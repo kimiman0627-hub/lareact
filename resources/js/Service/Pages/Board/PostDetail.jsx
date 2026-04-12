@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useForm, usePage } from "@inertiajs/react";
 import ServiceLayout from "@/Service/Layouts/ServiceLayout";
 import { timeAgo, fmtHits } from "@/Service/Components/Board/BoardCard";
+import axios from "axios";
 
 
 /** 댓글 입력 폼 */
@@ -144,7 +145,71 @@ function CommentItem({ comment, postId, authUser, maxDepth, replies = [], allCom
     );
 }
 
-export default function PostDetail({ post, comments = [], maxDepth = 2 }) {
+/** 좋아요/싫어요 바 */
+function LikeBar({ postId, initialLike, initialDislike, initialUserType, useLike, useDislike, authUser }) {
+    const [likeCount, setLikeCount]   = useState(initialLike ?? 0);
+    const [dislikeCount, setDislikeCount] = useState(initialDislike ?? 0);
+    const [userType, setUserType]     = useState(initialUserType ?? null);
+    const [loading, setLoading]       = useState(false);
+
+    if (!useLike && !useDislike) return null;
+
+    async function handleToggle(type) {
+        if (!authUser) {
+            window.location.href = '/login';
+            return;
+        }
+        if (loading) return;
+        setLoading(true);
+        try {
+            const res = await axios.post(`/post/${postId}/like`, { type });
+            setLikeCount(res.data.like_count);
+            setDislikeCount(res.data.dislike_count);
+            setUserType(res.data.user_type);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    return (
+        <div className="flex items-center justify-center gap-3 py-5 border-t border-gray-100">
+            {useLike && (
+                <button
+                    onClick={() => handleToggle('LIKE')}
+                    disabled={loading}
+                    className={`flex items-center gap-2 px-5 py-2 rounded-full border-2 text-sm font-semibold transition disabled:opacity-50 ${
+                        userType === 'LIKE'
+                            ? 'border-blue-500 bg-blue-500 text-white'
+                            : 'border-gray-200 text-slate-500 hover:border-blue-400 hover:text-blue-500'
+                    }`}
+                >
+                    <svg className="w-4 h-4" fill={userType === 'LIKE' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                    </svg>
+                    좋아요 <span className="font-mono">{likeCount}</span>
+                </button>
+            )}
+            {useDislike && (
+                <button
+                    onClick={() => handleToggle('DISLIKE')}
+                    disabled={loading}
+                    className={`flex items-center gap-2 px-5 py-2 rounded-full border-2 text-sm font-semibold transition disabled:opacity-50 ${
+                        userType === 'DISLIKE'
+                            ? 'border-rose-500 bg-rose-500 text-white'
+                            : 'border-gray-200 text-slate-500 hover:border-rose-400 hover:text-rose-500'
+                    }`}
+                >
+                    <svg className="w-4 h-4 rotate-180" fill={userType === 'DISLIKE' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                    </svg>
+                    싫어요 <span className="font-mono">{dislikeCount}</span>
+                </button>
+            )}
+        </div>
+    );
+}
+
+export default function PostDetail({ post, comments = [], maxDepth = 2, boardOptions = {}, userLikeType = null, prevPost = null, nextPost = null }) {
     const { auth } = usePage().props;
     const authUser  = auth?.user ?? null;
 
@@ -204,6 +269,51 @@ export default function PostDetail({ post, comments = [], maxDepth = 2 }) {
                     className="px-5 py-6 prose prose-sm max-w-none text-slate-700 leading-relaxed post-content"
                     dangerouslySetInnerHTML={{ __html: post.content }}
                 />
+
+                {/* 좋아요 / 싫어요 */}
+                <LikeBar
+                    postId={post.post_id}
+                    initialLike={post.like_count}
+                    initialDislike={post.dislike_count}
+                    initialUserType={userLikeType}
+                    useLike={boardOptions.use_like ?? true}
+                    useDislike={boardOptions.use_dislike ?? false}
+                    authUser={authUser}
+                />
+
+                {/* 이전글 / 다음글 */}
+                {(prevPost || nextPost) && (
+                    <div className="border-t border-gray-100 text-sm">
+                        {nextPost && (
+                            <Link
+                                href={`/post/${nextPost.post_id}`}
+                                className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition border-b border-gray-100 group"
+                            >
+                                <span className="shrink-0 flex items-center gap-1 text-xs text-slate-400 w-14">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    다음글
+                                </span>
+                                <span className="text-slate-700 truncate group-hover:text-blue-500 transition">{nextPost.title}</span>
+                            </Link>
+                        )}
+                        {prevPost && (
+                            <Link
+                                href={`/post/${prevPost.post_id}`}
+                                className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition group"
+                            >
+                                <span className="shrink-0 flex items-center gap-1 text-xs text-slate-400 w-14">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                    이전글
+                                </span>
+                                <span className="text-slate-700 truncate group-hover:text-blue-500 transition">{prevPost.title}</span>
+                            </Link>
+                        )}
+                    </div>
+                )}
 
                 {/* 하단 */}
                 <div className="px-5 py-3 border-t border-gray-100">

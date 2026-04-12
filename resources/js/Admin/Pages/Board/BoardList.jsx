@@ -270,6 +270,11 @@ export default function BoardList({
                                             </span>
                                         </td>
                                         <td className="px-4 py-4 text-xs text-gray-500 space-x-1">
+                                            {(opts.show_on_main ?? true) && (
+                                                <span className="inline-block bg-green-50 text-green-700 rounded px-1.5 py-0.5">
+                                                    메인노출
+                                                </span>
+                                            )}
                                             {opts.comment_enabled && (
                                                 <span className="inline-block bg-blue-50 text-blue-600 rounded px-1.5 py-0.5">
                                                     댓글

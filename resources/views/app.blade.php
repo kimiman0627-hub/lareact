@@ -7,7 +7,7 @@
         @vite(['resources/css/app.css', 'resources/js/service.jsx']) 
         @inertiaHead
     </head>
-    <body>
+    <body class="overflow-x-hidden">
         @inertia
     </body>
 </html>

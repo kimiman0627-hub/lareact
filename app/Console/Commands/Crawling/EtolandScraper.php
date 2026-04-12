@@ -32,6 +32,7 @@ class EtolandScraper extends BaseScraper
             'headers' => ['Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'],
         ]);
 
+        $this->startCrawlLog(self::SOURCE);
         $this->info('[' . now()->format('Y-m-d H:i:s') . '] 이토랜드 크롤링 시작');
 
         foreach (self::BOARDS as $boardName => $boardInfo) {
@@ -40,6 +41,7 @@ class EtolandScraper extends BaseScraper
         }
 
         $this->info('[' . now()->format('Y-m-d H:i:s') . '] 크롤링 완료');
+        $this->finishCrawlLog();
     }
 
     private function crawlBoard(Client $client, string $boardName, array $boardInfo): void
@@ -72,6 +74,7 @@ class EtolandScraper extends BaseScraper
             }
 
             $this->info("  총 " . count($postLinks) . "건 발견");
+            $this->incFound(count($postLinks));
 
             $candidateSourceIds = array_map(fn($wrId) => $boardName . '_' . $wrId, array_keys($postLinks));
             $existing = $this->fetchExistingSourceIds(self::SOURCE, $candidateSourceIds);
@@ -80,6 +83,7 @@ class EtolandScraper extends BaseScraper
                 $sourceId = $boardName . '_' . $wrId;
                 if (isset($existing[$sourceId])) {
                     $this->line("  스킵 (중복): source_id={$sourceId}");
+                    $this->incSkipped();
                     continue;
                 }
                 $this->crawlPost($client, $boardName, $boardInfo['category'], $sourceId, $url);
@@ -128,8 +132,11 @@ class EtolandScraper extends BaseScraper
             // 썸네일 리사이즈 URL → 원본으로 복원 후 이미지 수집
             $images = $this->collectImagesEtoland($contentNode);
 
+            // 조회수: GnuBoard 표준 selector
+            $hits = $this->extractHits($c, ['#view_count', 'span.count', '.view_count', 'strong.count']);
+
             // DB 저장 (트랜잭션) — 이미지 HTTP 요청 없음
-            $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml) {
+            $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml, $hits) {
                 $slug = Str::slug($author) ?: 'user';
                 $user = $this->firstOrCreateUser($author, $slug . '_' . Str::random(6) . '@' . self::DOMAIN);
 
@@ -142,7 +149,7 @@ class EtolandScraper extends BaseScraper
                     'post_category' => $category,
                     'title'         => $title,
                     'content'       => $contentHtml,
-                    'hits'          => 0,
+                    'hits'          => $hits,
                     'comment_count' => 0,
                     'is_notice'     => false,
                 ]);
@@ -159,6 +166,7 @@ class EtolandScraper extends BaseScraper
                 }
             }
 
+            $this->incSaved();
             $this->info("  저장: [{$sourceId}] {$title} / 작성자: {$author} / 이미지: " . count($downloaded) . '/' . count($images) . '개');
 
         } catch (\Exception $e) {

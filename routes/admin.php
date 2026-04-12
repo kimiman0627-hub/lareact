@@ -6,8 +6,10 @@ use App\Http\Controllers\Admin\User\UserController;
 use App\Http\Controllers\Admin\Board\PostController;
 use App\Http\Controllers\Admin\Board\BoardController;
 use App\Http\Controllers\Admin\Board\CommentController;
+use App\Http\Controllers\Admin\Board\LikeController;
 use App\Http\Controllers\Admin\Banner\BannerController;
 use App\Http\Controllers\Admin\File\FileController;
+use App\Http\Controllers\Admin\Crawl\CrawlLogController;
 
 // 관리자 
 
@@ -35,6 +37,7 @@ Route::middleware(['auth:admin'])->group(function () {
     Route::resource('posts', PostController::class);
     Route::resource('boards', BoardController::class);
 
+    Route::get('likes',              [LikeController::class,   'index'])->name('likes.index');
     Route::get('comments',           [CommentController::class, 'index'])->name('comments.index');
     Route::post('comments',          [CommentController::class, 'store'])->name('comments.store');
     Route::put('comments/{id}',      [CommentController::class, 'update'])->name('comments.update');
@@ -44,5 +47,9 @@ Route::middleware(['auth:admin'])->group(function () {
     Route::resource('banners', BannerController::class);
 
     Route::post('files/upload', [FileController::class, 'upload'])->name('files.upload');
+
+    // 크롤링 로그
+    Route::get('crawl-logs',          [CrawlLogController::class, 'index'])->name('crawl-logs.index');
+    Route::get('crawl-logs/{id}',     [CrawlLogController::class, 'show'])->name('crawl-logs.show');
 });
 

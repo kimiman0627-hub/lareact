@@ -4,10 +4,19 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Service\Main\MainController;
 use App\Http\Controllers\Service\Auth\AuthController;
 use App\Http\Controllers\Service\Board\BoardController;
+use App\Http\Controllers\Service\Board\PopularController;
 use App\Http\Controllers\Service\Board\CommentController;
+use App\Http\Controllers\Service\Board\LikeController;
+use App\Http\Controllers\Service\Search\SearchController;
 
 // 서비스 메인
 Route::get('/', [MainController::class, 'index']);
+
+// 통합검색
+Route::get('/search', [SearchController::class, 'index'])->name('search');
+
+// 인기글
+Route::get('/popular', [PopularController::class, 'index'])->name('popular');
 
 // 게시판
 Route::get('/board/{category}', [BoardController::class, 'index'])->name('board.index');
@@ -17,6 +26,7 @@ Route::get('/post/{id}', [BoardController::class, 'show'])->name('post.show');
 Route::middleware('auth')->group(function () {
     Route::post('/post/{id}/comments', [CommentController::class, 'store'])->name('comment.store');
     Route::delete('/comment/{id}', [CommentController::class, 'destroy'])->name('comment.destroy');
+    Route::post('/post/{id}/like', [LikeController::class, 'toggle'])->name('post.like');
 });
 Route::get('/classic', [MainController::class, 'classic']);
 

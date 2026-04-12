@@ -51,6 +51,7 @@ class FomosScraper extends BaseScraper
     {
         $client = $this->makeClient();
 
+        $this->startCrawlLog(self::SOURCE);
         $this->info('[' . now()->format('Y-m-d H:i:s') . '] 포모스 크롤링 시작');
 
         foreach (self::BOARDS as $board) {
@@ -59,6 +60,7 @@ class FomosScraper extends BaseScraper
         }
 
         $this->info('[' . now()->format('Y-m-d H:i:s') . '] 크롤링 완료');
+        $this->finishCrawlLog();
     }
 
     private function crawlBoard(Client $client, array $board): void
@@ -102,12 +104,14 @@ class FomosScraper extends BaseScraper
             }
 
             $this->info('  총 ' . count($postLinks) . '건 발견');
+            $this->incFound(count($postLinks));
 
             $existing = $this->fetchExistingSourceIds(self::SOURCE, array_keys($postLinks));
 
             foreach ($postLinks as $sourceId => $url) {
                 if (isset($existing[$sourceId])) {
                     $this->line("  스킵 (중복): source_id={$sourceId}");
+                    $this->incSkipped();
                     continue;
                 }
                 $this->crawlPost($client, $sourceId, $url, $board['category']);
@@ -152,8 +156,11 @@ class FomosScraper extends BaseScraper
 
             $images = $this->collectImages($contentNode, self::BASE_URL);
 
+            // 조회수: p.sub_tit 내 span들 중 숫자로만 구성된 항목, 없으면 .view_count 시도
+            $hits = $this->extractHits($c, ['.view_count', 'p.sub_tit .count', 'span.count']);
+
             // DB 저장
-            $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml) {
+            $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml, $hits) {
                 $user = $this->firstOrCreateUser(
                     $author,
                     Str::slug($author) . '_' . Str::random(6) . '@' . self::DOMAIN
@@ -168,7 +175,7 @@ class FomosScraper extends BaseScraper
                     'post_category' => $category,
                     'title'         => $title,
                     'content'       => $contentHtml,
-                    'hits'          => 0,
+                    'hits'          => $hits,
                     'comment_count' => 0,
                     'is_notice'     => false,
                 ]);
@@ -185,6 +192,7 @@ class FomosScraper extends BaseScraper
                 }
             }
 
+            $this->incSaved();
             $this->info("  저장: [{$sourceId}] {$title} / 작성자: {$author} / 이미지: " . count($downloaded) . '/' . count($images) . '개');
 
         } catch (\Exception $e) {

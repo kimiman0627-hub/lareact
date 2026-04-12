@@ -95,6 +95,7 @@ class BoardController extends Controller
                 'options.use_dislike'        => 'nullable|boolean',
                 'options.thumbnail_enabled'  => 'nullable|boolean',
                 'options.notice_count'       => 'nullable|integer|min:0|max:20',
+                'options.show_on_main'       => 'nullable|boolean',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('board validation 실패:', $e->errors());

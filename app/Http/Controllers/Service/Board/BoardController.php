@@ -74,9 +74,10 @@ class BoardController extends Controller
             ->whereNull('p.deleted_at')
             ->first([
                 'p.post_id', 'p.title', 'p.content', 'p.is_notice',
-                'p.hits', 'p.comment_count', 'p.created_at', 'p.post_category', 'p.source',
+                'p.hits', 'p.comment_count', 'p.like_count', 'p.dislike_count',
+                'p.created_at', 'p.post_category', 'p.source',
                 'u.name as author',
-                'b.board_name', 'b.category',
+                'b.board_name', 'b.category', 'b.options as board_options',
             ]);
 
         if (!$post) {
@@ -85,11 +86,9 @@ class BoardController extends Controller
 
         DB::table('posts')->where('post_id', $id)->increment('hits');
 
-        $board = DB::table('boards')
-            ->where('category', $post->category)
-            ->first();
-
-        $boardOptions = $board ? json_decode($board->options ?? '{}', true) : [];
+        $boardOptions = $post->board_options
+            ? json_decode($post->board_options, true)
+            : [];
         $maxDepth     = (int) ($boardOptions['comment_depth'] ?? 2);
 
         $comments = DB::table('comments as c')
@@ -99,10 +98,39 @@ class BoardController extends Controller
             ->orderBy('c.created_at')
             ->get(['c.comment_id', 'c.parent_id', 'c.depth', 'c.content', 'c.created_at', 'c.user_id', 'u.name as author']);
 
+        // 로그인 유저의 좋아요/싫어요 상태
+        $userId   = auth()->id();
+        $userType = $userId
+            ? DB::table('post_likes')
+                ->where('post_id', $id)->where('user_id', $userId)
+                ->value('type')
+            : null;
+
+        // 이전글 / 다음글 (같은 게시판, 공지 제외)
+        $sibling = DB::table('posts')
+            ->where('post_category', $post->post_category)
+            ->where('post_status', 'ACTIVE')
+            ->where('is_notice', false)
+            ->whereNull('deleted_at');
+
+        $prevPost = (clone $sibling)
+            ->where('post_id', '<', $id)
+            ->orderByDesc('post_id')
+            ->first(['post_id', 'title']);
+
+        $nextPost = (clone $sibling)
+            ->where('post_id', '>', $id)
+            ->orderBy('post_id')
+            ->first(['post_id', 'title']);
+
         return Inertia::render('Board/PostDetail', [
-            'post'      => $post,
-            'comments'  => $comments,
-            'maxDepth'  => $maxDepth,
+            'post'         => $post,
+            'comments'     => $comments,
+            'maxDepth'     => $maxDepth,
+            'boardOptions' => $boardOptions,
+            'userLikeType' => $userType,
+            'prevPost'     => $prevPost,
+            'nextPost'     => $nextPost,
         ]);
     }
 }

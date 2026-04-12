@@ -9,11 +9,68 @@ use Symfony\Component\DomCrawler\Crawler;
 use App\Models\User\User;
 use App\Models\File\File;
 use App\Models\Board\Post;
+use App\Models\Crawl\CrawlLog;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 abstract class BaseScraper extends Command
 {
+    // ---------------------------------------------------------------
+    // 크롤링 로그 상태 (메모리 내 집계 후 finishCrawlLog 에서 일괄 저장)
+    // ---------------------------------------------------------------
+    private ?CrawlLog $crawlLog  = null;
+    private int   $logFound   = 0;
+    private int   $logSaved   = 0;
+    private int   $logSkipped = 0;
+    private int   $logErrors  = 0;
+    private array $errorLog   = [];
+
+    /**
+     * error() 를 오버라이드해서 콘솔 출력과 동시에 에러 로그를 메모리에 기록.
+     */
+    public function error($string, $verbosity = null): void
+    {
+        parent::error($string, $verbosity);
+        if ($this->crawlLog !== null) {
+            $this->logErrors++;
+            $this->errorLog[] = [
+                'message' => (string) $string,
+                'time'    => now()->toDateTimeString(),
+            ];
+        }
+    }
+
+    /** 크롤링 시작 시 호출. */
+    protected function startCrawlLog(string $source): void
+    {
+        $this->logFound = $this->logSaved = $this->logSkipped = $this->logErrors = 0;
+        $this->errorLog = [];
+
+        $this->crawlLog = CrawlLog::create([
+            'source'     => $source,
+            'command'    => trim(explode(' ', $this->signature)[0]),
+            'status'     => 'RUNNING',
+            'started_at' => now(),
+        ]);
+    }
+
+    /** 크롤링 완료 시 호출. */
+    protected function finishCrawlLog(): void
+    {
+        $this->crawlLog?->update([
+            'status'        => 'DONE',
+            'total_found'   => $this->logFound,
+            'total_saved'   => $this->logSaved,
+            'total_skipped' => $this->logSkipped,
+            'total_errors'  => $this->logErrors,
+            'error_log'     => array_slice($this->errorLog, -200), // 최대 200건
+            'finished_at'   => now(),
+        ]);
+    }
+
+    protected function incFound(int $n = 1): void { $this->logFound   += $n; }
+    protected function incSaved(): void            { $this->logSaved++; }
+    protected function incSkipped(): void          { $this->logSkipped++; }
     /**
      * 공통 Guzzle 클라이언트 생성. 사이트별 옵션은 $extra로 오버라이드.
      */
@@ -175,27 +232,61 @@ abstract class BaseScraper extends Command
     }
 
     /**
-     * content HTML 내 <video>, <source> 태그의 상대 경로 src를 절대 URL로 변환.
+     * content HTML 내 <video>, <source> 태그의 src를 절대 URL로 변환하고
+     * <video> 태그에 controls 속성이 없으면 추가.
+     *
+     * 처리 대상:
+     *   - 프로토콜 상대 URL (//example.com/...) → https: 추가
+     *   - 상대 경로 (/path/...) → baseUrl 앞에 붙임
      */
     protected function fixVideoUrls(string $content, string $baseUrl): string
     {
         return preg_replace_callback(
-            '/<(video|source)\b[^>]*>/i',
+            '/<(video|source)\b([^>]*)>/i',
             function (array $tag) use ($baseUrl): string {
-                return preg_replace_callback(
+                $attrs = preg_replace_callback(
                     '/\bsrc=["\']([^"\']+)["\']/i',
                     function (array $m) use ($baseUrl): string {
                         $src = $m[1];
-                        if (!str_starts_with($src, 'http')) {
+                        if (str_starts_with($src, '//')) {
+                            $src = 'https:' . $src;
+                        } elseif (!str_starts_with($src, 'http')) {
                             $src = $baseUrl . '/' . ltrim($src, '/');
                         }
                         return 'src="' . $src . '"';
                     },
-                    $tag[0]
+                    $tag[2]
                 );
+
+                // <video> 태그에 controls 없으면 추가
+                if (strtolower($tag[1]) === 'video' && !preg_match('/\bcontrols\b/i', $attrs)) {
+                    $attrs .= ' controls';
+                }
+
+                return '<' . $tag[1] . $attrs . '>';
             },
             $content
         );
+    }
+
+    /**
+     * 크롤러에서 조회수를 추출하는 공통 헬퍼.
+     * $selectors 를 순서대로 시도해 첫 번째로 숫자가 나오는 값을 반환.
+     */
+    protected function extractHits(Crawler $c, array $selectors): int
+    {
+        foreach ($selectors as $selector) {
+            try {
+                $node = $c->filter($selector)->first();
+                if ($node->count()) {
+                    $num = (int) preg_replace('/[^0-9]/', '', $node->text());
+                    if ($num > 0) return $num;
+                }
+            } catch (\Exception) {
+                // 잘못된 selector는 무시
+            }
+        }
+        return 0;
     }
 
     /**

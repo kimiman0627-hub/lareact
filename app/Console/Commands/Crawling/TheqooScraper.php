@@ -16,7 +16,7 @@ class TheqooScraper extends BaseScraper
     private const SOURCE         = 'THEQOO';
     private const DOMAIN         = 'theqoo.net';
     private const BASE_URL       = 'https://' . self::DOMAIN;
-    private const ANONYMOUS_NAME = '더쿠_익명';
+    private const ANONYMOUS_NAME = '익명';
 
     // 게시판 mid → 기본 카테고리 (상세 페이지의 카테고리로 덮어씀)
     private const BOARDS = [
@@ -25,6 +25,13 @@ class TheqooScraper extends BaseScraper
         'talk'   => 'free',
         'ktalk'  => 'enter',
         'dyb'    => 'enter',
+        'stock'  => 'stock',
+        'exercise'  => 'sports',
+        'sports' => 'sports',
+        'kstar'  => 'enter',
+        'lolt1'   => 'game',
+        'kdolboys'  => 'enter',
+        'kdolgirls' => 'enter',
     ];
 
     // 더쿠 카테고리 → 우리 board category
@@ -39,6 +46,7 @@ class TheqooScraper extends BaseScraper
             'headers' => ['Referer' => self::BASE_URL],
         ]);
 
+        $this->startCrawlLog(self::SOURCE);
         $this->info('[' . now()->format('Y-m-d H:i:s') . '] 더쿠 크롤링 시작');
 
         foreach (self::BOARDS as $boardMid => $defaultCategory) {
@@ -47,6 +55,7 @@ class TheqooScraper extends BaseScraper
         }
 
         $this->info('[' . now()->format('Y-m-d H:i:s') . '] 크롤링 완료');
+        $this->finishCrawlLog();
     }
 
     private function crawlBoard(Client $client, string $boardMid, string $defaultCategory): void
@@ -74,12 +83,14 @@ class TheqooScraper extends BaseScraper
             }
 
             $this->info("  총 " . count($postLinks) . "건 발견");
+            $this->incFound(count($postLinks));
 
             $existing = $this->fetchExistingSourceIds(self::SOURCE, array_keys($postLinks));
 
             foreach ($postLinks as $sourceId => $url) {
                 if (isset($existing[$sourceId])) {
                     $this->line("  스킵 (중복): source_id={$sourceId}");
+                    $this->incSkipped();
                     continue;
                 }
                 $this->crawlPost($client, $sourceId, $url, $defaultCategory);
@@ -121,6 +132,7 @@ class TheqooScraper extends BaseScraper
                 $author = trim(preg_replace('/https?:\/\/\S+/', '', $rawText));
                 $author = trim(preg_replace('/\s+/', ' ', $author));
                 if ($author === '') $author = self::ANONYMOUS_NAME;
+                if($author === '무명의 더쿠') $author = self::ANONYMOUS_NAME; // 작성자명이 '더쿠'인 경우 익명 처리
             }
 
             // 본문
@@ -133,8 +145,11 @@ class TheqooScraper extends BaseScraper
 
             $images = $this->collectImages($contentNode, self::BASE_URL);
 
+            // 조회수: XE 엔진 표준 selector
+            $hits = $this->extractHits($c, ['span.view_count', '.view_count', '.rd_num_view']);
+
             // DB 저장 (트랜잭션)
-            $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml) {
+            $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml, $hits) {
                 $user = $this->firstOrCreateUser(
                     $author,
                     Str::slug($author) . '_' . Str::random(6) . '@' . self::DOMAIN
@@ -149,7 +164,7 @@ class TheqooScraper extends BaseScraper
                     'post_category' => $category,
                     'title'         => $title,
                     'content'       => $contentHtml,
-                    'hits'          => 0,
+                    'hits'          => $hits,
                     'comment_count' => 0,
                     'is_notice'     => false,
                 ]);
@@ -166,6 +181,7 @@ class TheqooScraper extends BaseScraper
                 }
             }
 
+            $this->incSaved();
             $this->info("  저장: [{$sourceId}] {$title} / 작성자: {$author} / 카테고리: {$category} / 이미지: " . count($downloaded) . '/' . count($images) . '개');
 
         } catch (\Exception $e) {

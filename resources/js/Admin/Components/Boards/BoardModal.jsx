@@ -20,6 +20,7 @@ const DEFAULT_OPTIONS = {
     use_dislike: false,
     thumbnail_enabled: true,
     notice_count: 3,
+    show_on_main: true,
 };
 
 const DEFAULT_FORM = {
@@ -465,6 +466,17 @@ export default function BoardModal({
                             />
 
                             <div className="rounded-xl border border-slate-200 p-4 space-y-1 divide-y divide-slate-100">
+                                <Toggle
+                                    label="메인페이지 노출"
+                                    desc="메인페이지 게시판 섹션에 이 게시판을 표시합니다"
+                                    checked={form.options.show_on_main}
+                                    onChange={() =>
+                                        setOpt(
+                                            "show_on_main",
+                                            !form.options.show_on_main,
+                                        )
+                                    }
+                                />
                                 <Toggle
                                     label="좋아요 기능"
                                     checked={form.options.use_like}

@@ -37,6 +37,7 @@ class DcInsideScraper extends BaseScraper
     {
         $client = $this->makeClient(['allow_redirects' => true, 'headers' => ['Referer' => self::BASE_URL]]);
 
+        $this->startCrawlLog(self::SOURCE);
         $this->info('[' . now()->format('Y-m-d H:i:s') . '] DC인사이드 크롤링 시작');
 
         foreach (self::GALLERIES as $galleryId => $category) {
@@ -45,6 +46,7 @@ class DcInsideScraper extends BaseScraper
         }
 
         $this->info('[' . now()->format('Y-m-d H:i:s') . '] 크롤링 완료');
+        $this->finishCrawlLog();
     }
 
     private function crawlGallery(Client $client, string $galleryId, string $category): void
@@ -84,6 +86,7 @@ class DcInsideScraper extends BaseScraper
                 }
 
                 $this->info("  page {$page}: " . count($postLinks) . "건 발견");
+                $this->incFound(count($postLinks));
 
                 $candidateSourceIds = array_map(fn($no) => $galleryId . '_' . $no, array_keys($postLinks));
                 $existing = $this->fetchExistingSourceIds(self::SOURCE, $candidateSourceIds);
@@ -92,6 +95,7 @@ class DcInsideScraper extends BaseScraper
                     $sourceId = $galleryId . '_' . $postNo;
                     if (isset($existing[$sourceId])) {
                         $this->line("  스킵 (중복): {$sourceId}");
+                        $this->incSkipped();
                         continue;
                     }
                     $this->crawlPost($client, $galleryId, $category, $postNo, $url);
@@ -135,8 +139,11 @@ class DcInsideScraper extends BaseScraper
 
             $images = $this->collectImages($contentNode, self::BASE_URL);
 
+            // 조회수: .gall_count .view_count → .view_count 순으로 시도
+            $hits = $this->extractHits($c, ['.gall_count .view_count', '.view_count', '.gall_count']);
+
             // DB 저장 (트랜잭션) — 이미지 HTTP 요청 없음
-            $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml) {
+            $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml, $hits) {
                 $slug = Str::slug($author) ?: 'dc-user';
                 $user = $this->firstOrCreateUser($author, $slug . '_' . Str::random(6) . '@dummy.dcinside.com');
 
@@ -149,7 +156,7 @@ class DcInsideScraper extends BaseScraper
                     'post_category' => $category,
                     'title'         => $title,
                     'content'       => $contentHtml,
-                    'hits'          => 0,
+                    'hits'          => $hits,
                     'comment_count' => 0,
                     'is_notice'     => false,
                 ]);
@@ -166,6 +173,7 @@ class DcInsideScraper extends BaseScraper
                 }
             }
 
+            $this->incSaved();
             $this->info("  저장: [{$sourceId}] {$title} / 작성자: {$author} / 이미지: " . count($downloaded) . '/' . count($images) . '개');
 
         } catch (\Exception $e) {

@@ -19,6 +19,7 @@ PostgreSQL 사용. 마이그레이션 파일 기준으로 작성.
 | post_banners | 2026-04-06 | 게시글-배너 연결 |
 | files | 2026-04-06 | 업로드 파일 |
 | boards | 2026-04-08 | 게시판 설정 |
+| crawl_logs | 2026-04-12 | 크롤링 실행 이력 |
 
 ---
 
@@ -193,3 +194,24 @@ PostgreSQL 사용. 마이그레이션 파일 기준으로 작성.
   "notice_count":       3
 }
 ```
+
+---
+
+## crawl_logs
+
+크롤링 실행 이력. `php artisan crawl:*` 명령 실행 시 자동 기록.
+
+| 컬럼 | 타입 | 옵션 | 설명 |
+|---|---|---|---|
+| id | bigint | PK, auto | |
+| source | varchar(50) | indexed | 크롤링 소스 (DCINSIDE, DOGDRIP, ETOLAND, THEQOO, FOMOS) |
+| command | varchar(100) | | artisan 커맨드명 (crawl:dcinside 등) |
+| status | varchar(20) | default: RUNNING | RUNNING / DONE / FAILED |
+| total_found | int unsigned | default 0 | 목록에서 발견된 게시글 수 |
+| total_saved | int unsigned | default 0 | DB에 저장된 신규 게시글 수 |
+| total_skipped | int unsigned | default 0 | 이미 존재해서 스킵된 수 |
+| total_errors | int unsigned | default 0 | 에러 발생 횟수 |
+| error_log | jsonb | nullable | 에러 상세 [{message, time}, ...] 최대 200건 |
+| started_at | timestamp | | 크롤링 시작 시각 |
+| finished_at | timestamp | nullable | 크롤링 종료 시각 (RUNNING 중이면 null) |
+| created_at / updated_at | timestamp | | |

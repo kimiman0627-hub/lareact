@@ -68,7 +68,10 @@ export default function Sidebar() {
 
     return (
         <aside className="w-full lg:w-64 shrink-0 space-y-4">
-            <AuthWidget />
+            {/* 로그인 위젯은 데스크톱에서만 표시 — 모바일은 TopBar에서 처리 */}
+            <div className="hidden lg:block">
+                <AuthWidget />
+            </div>
             <BannerSlot banners={sideBanners1} position="SIDE" />
             <NoticeWidget />
             <StatsWidget />

@@ -37,6 +37,11 @@ return [
                     'route' => 'admin.comments.index',
                 ],
                 [
+                    'title' => '좋아요/싫어요 내역',
+                    'icon' => 'fa-solid fa-thumbs-up',
+                    'route' => 'admin.likes.index',
+                ],
+                [
                     'title' => '게시판 설정',
                     'icon' => 'fa-solid fa-sliders',
                     'route' => 'admin.boards.index',
@@ -53,6 +58,18 @@ return [
                     'title' => '배너 관리',
                     'icon' => 'fa-solid fa-list',
                     'route' => 'admin.banners.index',
+                ],
+            ],
+        ],
+        [
+            'title' => '로그',
+            'icon' => 'fa-solid fa-spider',
+            'route' => 'admin.crawl-logs.index',
+            'submenu' => [
+                [
+                    'title' => '크롤링 로그',
+                    'icon' => 'fa-solid fa-list',
+                    'route' => 'admin.crawl-logs.index',
                 ],
             ],
         ],

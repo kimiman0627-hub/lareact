@@ -25,6 +25,10 @@ class DogDripScraper extends BaseScraper
         'stock'   => '/stock',
         'ib'      => '/ib',
         'game'    => '/game',
+        'lol'   => '/lol',
+        'coin'    => '/coin',
+        'lostark' => '/lostark',
+        'diablo'   => '/diablo',
     ];
 
     private const CATEGORY_MAP = [
@@ -34,12 +38,17 @@ class DogDripScraper extends BaseScraper
         'stock'   => 'stock',
         'ib'      => 'enter',
         'game'    => 'game',
+        'coin'    => 'stock',
+        'lol'     => 'game',
+        'lostark' => 'game',
+        'diablo'  => 'game',
     ];
 
     public function handle(): void
     {
         $client = $this->makeClient();
 
+        $this->startCrawlLog(self::SOURCE);
         $this->info('[' . now()->format('Y-m-d H:i:s') . '] 개드립 크롤링 시작');
 
         foreach (self::BOARDS as $boardName => $boardPath) {
@@ -48,6 +57,7 @@ class DogDripScraper extends BaseScraper
         }
 
         $this->info('[' . now()->format('Y-m-d H:i:s') . '] 크롤링 완료');
+        $this->finishCrawlLog();
     }
 
     private function crawlBoard(Client $client, string $boardName, string $boardPath): void
@@ -78,12 +88,14 @@ class DogDripScraper extends BaseScraper
             }
 
             $this->info("  총 " . count($postLinks) . "건 발견");
+            $this->incFound(count($postLinks));
 
             $existing = $this->fetchExistingSourceIds(self::SOURCE, array_keys($postLinks));
 
             foreach ($postLinks as $sourceId => $url) {
                 if (isset($existing[$sourceId])) {
                     $this->line("  스킵 (중복): source_id={$sourceId}");
+                    $this->incSkipped();
                     continue;
                 }
                 $this->crawlPost($client, $boardName, $sourceId, $url);
@@ -120,8 +132,11 @@ class DogDripScraper extends BaseScraper
 
             $images = $this->collectImages($contentNode, self::BASE_URL);
 
+            // 조회수: XE 엔진 표준 selector
+            $hits = $this->extractHits($c, ['span.view_count', '.view_count', '.rd_num_view']);
+
             // DB 저장 (트랜잭션) — 이미지 HTTP 요청 없음
-            $post = DB::transaction(function () use ($sourceId, $boardName, $title, $author, $contentHtml) {
+            $post = DB::transaction(function () use ($sourceId, $boardName, $title, $author, $contentHtml, $hits) {
                 $user = $this->firstOrCreateUser(
                     $author,
                     Str::slug($author) . '_' . Str::random(6) . '@' . self::DOMAIN
@@ -136,7 +151,7 @@ class DogDripScraper extends BaseScraper
                     'post_category' => self::CATEGORY_MAP[$boardName] ?? $boardName,
                     'title'         => $title,
                     'content'       => $contentHtml,
-                    'hits'          => 0,
+                    'hits'          => $hits,
                     'comment_count' => 0,
                     'is_notice'     => false,
                 ]);
@@ -154,6 +169,7 @@ class DogDripScraper extends BaseScraper
                 }
             }
 
+            $this->incSaved();
             $this->info("  저장: [{$sourceId}] {$title} / 작성자: {$author} / 이미지: " . count($downloaded) . '/' . count($images) . '개');
 
         } catch (\Exception $e) {

@@ -16,6 +16,11 @@ export default defineConfig(({ mode }) => {
                 host: env.VITE_SERVER_HOST, // 브라우저가 접속할 공인 IP
                 clientPort: parseInt(env.VITE_HMR_CLIENT_PORT) || 80, // 브라우저는 80으로 접속
             },
+            watch: {
+                // vendor/, node_modules/ 는 변경될 일 없으므로 watch에서 제외
+                // → inotify 파일워처 수 대폭 절감 (ENOSPC 방지)
+                ignored: ['**/vendor/**', '**/node_modules/**', '**/storage/**', '**/public/build/**'],
+            },
         },
         plugins: [
             tailwindcss(), 

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -43,6 +44,15 @@ class HandleInertiaRequests extends Middleware
 
             // 관리자로 인증된 경우에만 config/admin.php의 menu를 전달
             'adminMenu' => $request->user('admin') ? config('admin.menu') : null,
+
+            // GNB 게시판 목록 (모든 페이지 공유)
+            'gnbBoards' => DB::table('boards')
+                ->where('board_status', 'ACTIVE')
+                ->whereNull('deleted_at')
+                ->orderBy('board_order')
+                ->orderBy('board_id')
+                ->get(['board_id', 'board_name', 'category'])
+                ->toArray(),
         ]);
     }
 }
