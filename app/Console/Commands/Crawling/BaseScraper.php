@@ -5,6 +5,7 @@ namespace App\Console\Commands\Crawling;
 use Illuminate\Console\Command;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\ConnectException;
 use Symfony\Component\DomCrawler\Crawler;
 use App\Models\User\User;
 use App\Models\File\File;
@@ -15,6 +16,21 @@ use Illuminate\Support\Str;
 
 abstract class BaseScraper extends Command
 {
+    // ---------------------------------------------------------------
+    // User-Agent 풀: 매 크롤링마다 랜덤 선택해 봇 탐지 완화
+    // ---------------------------------------------------------------
+    private const USER_AGENTS = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    ];
+
+    // 이미지 최소 크기 (bytes): 이하는 트래킹 픽셀·아이콘으로 간주해 스킵
+    private const MIN_IMAGE_SIZE = 3072; // 3 KB
+
     // ---------------------------------------------------------------
     // 크롤링 로그 상태 (메모리 내 집계 후 finishCrawlLog 에서 일괄 저장)
     // ---------------------------------------------------------------
@@ -54,11 +70,13 @@ abstract class BaseScraper extends Command
         ]);
     }
 
-    /** 크롤링 완료 시 호출. */
+    /** 크롤링 완료 시 호출. 에러가 있으면 DONE_WITH_ERRORS 로 기록. */
     protected function finishCrawlLog(): void
     {
+        $status = $this->logErrors > 0 ? 'DONE_WITH_ERRORS' : 'DONE';
+
         $this->crawlLog?->update([
-            'status'        => 'DONE',
+            'status'        => $status,
             'total_found'   => $this->logFound,
             'total_saved'   => $this->logSaved,
             'total_skipped' => $this->logSkipped,
@@ -71,8 +89,10 @@ abstract class BaseScraper extends Command
     protected function incFound(int $n = 1): void { $this->logFound   += $n; }
     protected function incSaved(): void            { $this->logSaved++; }
     protected function incSkipped(): void          { $this->logSkipped++; }
+
     /**
-     * 공통 Guzzle 클라이언트 생성. 사이트별 옵션은 $extra로 오버라이드.
+     * 공통 Guzzle 클라이언트 생성.
+     * 매 실행마다 UA 풀에서 랜덤 선택. 사이트별 옵션은 $extra로 오버라이드.
      */
     protected function makeClient(array $extra = []): Client
     {
@@ -80,39 +100,137 @@ abstract class BaseScraper extends Command
             'timeout'         => 15,
             'connect_timeout' => 5,
             'headers'         => [
-                'User-Agent'      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Accept-Language' => 'ko-KR,ko;q=0.9',
+                'User-Agent'      => self::USER_AGENTS[array_rand(self::USER_AGENTS)],
+                'Accept-Language' => 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Encoding' => 'gzip, deflate, br',
+                'Cache-Control'   => 'no-cache',
             ],
         ], $extra));
     }
 
     /**
-     * HTML 페이지 가져오기. $convertEncoding=true 시 EUC-KR → UTF-8 자동 변환.
+     * HTML 페이지 가져오기.
+     * - 429/503 또는 네트워크 에러 시 최대 2회 재시도
+     * - 봇 차단 페이지(CAPTCHA 등) 감지 시 null 반환
+     * - $convertEncoding=true 시 EUC-KR → UTF-8 자동 변환
      */
     protected function fetchHtml(Client $client, string $url, bool $convertEncoding = false): ?string
     {
-        try {
-            $response = $client->get($url);
-            $body     = (string) $response->getBody();
+        $maxRetries = 2;
 
-            if ($convertEncoding) {
-                $contentType = $response->getHeaderLine('Content-Type');
-                $isEucKr = str_contains(strtolower($contentType), 'euc-kr')
-                        || str_contains(strtolower($body), 'charset=euc-kr')
-                        || str_contains(strtolower($body), 'charset="euc-kr"');
+        for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
+            try {
+                $response = $client->get($url);
+                $body     = (string) $response->getBody();
 
-                if ($isEucKr) {
-                    $converted = mb_convert_encoding($body, 'UTF-8', 'EUC-KR');
-                    if ($converted !== false) {
-                        $body = preg_replace('/charset=["\']?euc-kr["\']?/i', 'charset=utf-8', $converted);
+                // 봇 차단 페이지 감지 (200 OK이지만 실제로는 차단된 경우)
+                if ($this->isBotBlocked($body)) {
+                    $this->warn("  봇/CAPTCHA 차단 감지 ({$url})");
+                    return null;
+                }
+
+                if ($convertEncoding) {
+                    $contentType = $response->getHeaderLine('Content-Type');
+                    $isEucKr = str_contains(strtolower($contentType), 'euc-kr')
+                            || str_contains(strtolower($body), 'charset=euc-kr')
+                            || str_contains(strtolower($body), 'charset="euc-kr"');
+
+                    if ($isEucKr) {
+                        $converted = mb_convert_encoding($body, 'UTF-8', 'EUC-KR');
+                        if ($converted !== false) {
+                            $body = preg_replace('/charset=["\']?euc-kr["\']?/i', 'charset=utf-8', $converted);
+                        }
                     }
                 }
-            }
 
-            return $body;
-        } catch (RequestException $e) {
-            $this->error("  HTTP 에러 ({$url}): " . $e->getMessage());
-            return null;
+                return $body;
+
+            } catch (ConnectException $e) {
+                // 네트워크 연결 실패 — 재시도
+                if ($attempt < $maxRetries) {
+                    $wait = rand(5, 15);
+                    $this->warn("  연결 실패, {$wait}초 후 재시도 ({$attempt+1}/{$maxRetries}): {$url}");
+                    sleep($wait);
+                    continue;
+                }
+                $this->error("  연결 실패 (최대 재시도 초과, {$url}): " . $e->getMessage());
+                return null;
+
+            } catch (RequestException $e) {
+                $status = $e->getResponse()?->getStatusCode() ?? 0;
+
+                if ($status === 429) {
+                    // Too Many Requests: 충분히 쉬고 재시도
+                    if ($attempt < $maxRetries) {
+                        $wait = rand(30, 60);
+                        $this->warn("  429 Too Many Requests, {$wait}초 대기 후 재시도 ({$attempt+1}/{$maxRetries})");
+                        sleep($wait);
+                        continue;
+                    }
+                } elseif ($status === 503) {
+                    // Service Unavailable: 잠시 후 재시도
+                    if ($attempt < $maxRetries) {
+                        $wait = rand(10, 20);
+                        $this->warn("  503 Service Unavailable, {$wait}초 대기 후 재시도 ({$attempt+1}/{$maxRetries})");
+                        sleep($wait);
+                        continue;
+                    }
+                }
+
+                $this->error("  HTTP 에러 [{$status}] ({$url}): " . $e->getMessage());
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 봇/CAPTCHA 차단 페이지 여부 감지.
+     * 본문이 비정상적으로 짧거나 차단 키워드를 포함하면 true.
+     */
+    private function isBotBlocked(string $body): bool
+    {
+        // 정상 페이지는 최소 1KB 이상
+        if (strlen($body) < 1024) {
+            return true;
+        }
+
+        $lower = strtolower($body);
+        $blockPatterns = [
+            'captcha',
+            'recaptcha',
+            'robot check',
+            'bot detection',
+            'access denied',
+            '비정상적인 접근',
+            '잠시 후 다시',
+            'too many requests',
+            'rate limit',
+        ];
+
+        foreach ($blockPatterns as $pattern) {
+            if (str_contains($lower, $pattern)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 게시글 간 요청 딜레이.
+     * 기본 2~4초, 약 10% 확률로 8~15초의 긴 대기 (봇 패턴 방지).
+     */
+    protected function throttle(): void
+    {
+        if (rand(1, 10) === 1) {
+            $secs = rand(8, 15);
+            $this->line("  [throttle] {$secs}초 대기...");
+            sleep($secs);
+        } else {
+            sleep(rand(2, 4));
         }
     }
 
@@ -163,7 +281,7 @@ abstract class BaseScraper extends Command
 
         $results = [];
         foreach ($images as $originalSrc => $info) {
-            $fileInfo = $this->downloadImage($client, $info['resolved'], $postId, $dir);
+            $fileInfo = $this->downloadImage($client, $info['resolved'], $dir);
             if ($fileInfo) {
                 $results[$originalSrc] = $fileInfo;
             }
@@ -173,50 +291,70 @@ abstract class BaseScraper extends Command
     }
 
     /**
-     * 단일 이미지 다운로드. $dir은 호출 전 생성되어 있어야 함.
+     * 단일 이미지 다운로드.
+     * - 최소 크기(3KB) 미만이면 트래킹 픽셀/아이콘으로 간주해 스킵
+     * - 실패 시 1회 재시도
      */
-    protected function downloadImage(Client $client, string $imgUrl, int $postId, string $dir): ?array
+    protected function downloadImage(Client $client, string $imgUrl, string $dir): ?array
     {
-        try {
-            $response     = $client->get($imgUrl, ['timeout' => 20]);
-            $originalName = basename(parse_url($imgUrl, PHP_URL_PATH));
-            $ext          = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $maxRetries = 1;
 
-            $contentType = $response->getHeaderLine('Content-Type');
-            if (!$ext || !in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-                $ext = match (true) {
-                    str_contains($contentType, 'webp') => 'webp',
-                    str_contains($contentType, 'png')  => 'png',
-                    str_contains($contentType, 'gif')  => 'gif',
-                    default                            => 'jpg',
+        for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
+            try {
+                $response     = $client->get($imgUrl, ['timeout' => 20]);
+                $contents     = (string) $response->getBody();
+
+                // 최소 크기 필터: 트래킹 픽셀, 아이콘, 플레이스홀더 제외
+                if (strlen($contents) < self::MIN_IMAGE_SIZE) {
+                    $this->line("    이미지 스킵 (너무 작음, " . strlen($contents) . "B): {$imgUrl}");
+                    return null;
+                }
+
+                $originalName = basename(parse_url($imgUrl, PHP_URL_PATH));
+                $ext          = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+
+                $contentType = $response->getHeaderLine('Content-Type');
+                if (!$ext || !in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                    $ext = match (true) {
+                        str_contains($contentType, 'webp') => 'webp',
+                        str_contains($contentType, 'png')  => 'png',
+                        str_contains($contentType, 'gif')  => 'gif',
+                        default                            => 'jpg',
+                    };
+                }
+
+                $mime = match ($ext) {
+                    'png'  => 'image/png',
+                    'gif'  => 'image/gif',
+                    'webp' => 'image/webp',
+                    default => 'image/jpeg',
                 };
+
+                $storedName = Str::uuid() . '.' . $ext;
+                $savePath   = $dir . '/' . $storedName;
+
+                Storage::disk('public')->put($savePath, $contents);
+
+                return [
+                    'original_name' => $originalName ?: ('image.' . $ext),
+                    'stored_name'   => $storedName,
+                    'file_path'     => 'public/' . $savePath,
+                    'file_url'      => '/storage/' . $savePath,
+                    'mime_type'     => $mime,
+                    'file_size'     => strlen($contents),
+                ];
+
+            } catch (\Exception $e) {
+                if ($attempt < $maxRetries) {
+                    sleep(rand(3, 6));
+                    continue;
+                }
+                $this->warn("    이미지 다운로드 실패 ({$imgUrl}): " . $e->getMessage());
+                return null;
             }
-
-            $mime = match ($ext) {
-                'png'  => 'image/png',
-                'gif'  => 'image/gif',
-                'webp' => 'image/webp',
-                default => 'image/jpeg',
-            };
-
-            $storedName = Str::uuid() . '.' . $ext;
-            $savePath   = $dir . '/' . $storedName;
-            $contents   = (string) $response->getBody();
-
-            Storage::disk('public')->put($savePath, $contents);
-
-            return [
-                'original_name' => $originalName ?: ('image.' . $ext),
-                'stored_name'   => $storedName,
-                'file_path'     => 'public/' . $savePath,
-                'file_url'      => '/storage/' . $savePath,
-                'mime_type'     => $mime,
-                'file_size'     => strlen($contents),
-            ];
-        } catch (\Exception $e) {
-            $this->warn("    이미지 다운로드 실패 ({$imgUrl}): " . $e->getMessage());
-            return null;
         }
+
+        return null;
     }
 
     /**
@@ -234,10 +372,6 @@ abstract class BaseScraper extends Command
     /**
      * content HTML 내 <video>, <source> 태그의 src를 절대 URL로 변환하고
      * <video> 태그에 controls 속성이 없으면 추가.
-     *
-     * 처리 대상:
-     *   - 프로토콜 상대 URL (//example.com/...) → https: 추가
-     *   - 상대 경로 (/path/...) → baseUrl 앞에 붙임
      */
     protected function fixVideoUrls(string $content, string $baseUrl): string
     {
@@ -258,7 +392,6 @@ abstract class BaseScraper extends Command
                     $tag[2]
                 );
 
-                // <video> 태그에 controls 없으면 추가
                 if (strtolower($tag[1]) === 'video' && !preg_match('/\bcontrols\b/i', $attrs)) {
                     $attrs .= ' controls';
                 }

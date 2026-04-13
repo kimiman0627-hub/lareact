@@ -16,7 +16,7 @@ class FomosScraper extends BaseScraper
     private const SOURCE         = 'FOMOS';
     private const DOMAIN         = 'fomos.kr';
     private const BASE_URL       = 'https://www.' . self::DOMAIN;
-    private const ANONYMOUS_NAME = '포모스_익명';
+    private const ANONYMOUS_NAME = '익명';
 
     /**
      * 크롤링할 게시판 목록
@@ -115,7 +115,7 @@ class FomosScraper extends BaseScraper
                     continue;
                 }
                 $this->crawlPost($client, $sourceId, $url, $board['category']);
-                sleep(rand(1, 2));
+                $this->throttle();
             }
 
         } catch (\Exception $e) {
@@ -156,8 +156,12 @@ class FomosScraper extends BaseScraper
 
             $images = $this->collectImages($contentNode, self::BASE_URL);
 
-            // 조회수: p.sub_tit 내 span들 중 숫자로만 구성된 항목, 없으면 .view_count 시도
-            $hits = $this->extractHits($c, ['.view_count', 'p.sub_tit .count', 'span.count']);
+            // 조회수: <p class="sub_tit"><span>author</span><span>date</span><span>조회수 306</span></p>
+            $hits = 0;
+            $subTit = $c->filter('p.sub_tit')->count() ? $c->filter('p.sub_tit')->text() : '';
+            if (preg_match('/조회수\s*([\d,]+)/', $subTit, $hitsMatch)) {
+                $hits = (int) str_replace(',', '', $hitsMatch[1]);
+            }
 
             // DB 저장
             $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml, $hits) {

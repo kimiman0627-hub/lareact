@@ -56,9 +56,17 @@ class BoardController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
+        $canonical = url('/board/' . $category) . ($page > 1 ? '?page=' . $page : '');
+
         return Inertia::render('Board/BoardList', [
-            'board'   => $board,
-            'list'    => $paginated,
+            'board' => $board,
+            'list'  => $paginated,
+            'seo'   => [
+                'title'       => $board->board_name . ' 게시판 | ' . config('app.name'),
+                'description' => $board->board_name . ' 게시판의 최신 게시글을 확인하세요.',
+                'canonical'   => $canonical,
+                'ogType'      => 'website',
+            ],
         ]);
     }
 
@@ -98,13 +106,19 @@ class BoardController extends Controller
             ->orderBy('c.created_at')
             ->get(['c.comment_id', 'c.parent_id', 'c.depth', 'c.content', 'c.created_at', 'c.user_id', 'u.name as author']);
 
-        // 로그인 유저의 좋아요/싫어요 상태
+        // 로그인 유저의 좋아요/싫어요, 스크랩 상태
         $userId   = auth()->id();
         $userType = $userId
             ? DB::table('post_likes')
                 ->where('post_id', $id)->where('user_id', $userId)
                 ->value('type')
             : null;
+
+        $isScrapped = $userId
+            ? DB::table('scraps')->where('user_id', $userId)->where('post_id', $id)->exists()
+            : false;
+
+        $scrapCount = DB::table('scraps')->where('post_id', $id)->count();
 
         // 이전글 / 다음글 (같은 게시판, 공지 제외)
         $sibling = DB::table('posts')
@@ -123,14 +137,36 @@ class BoardController extends Controller
             ->orderBy('post_id')
             ->first(['post_id', 'title']);
 
+        // SEO: 본문에서 description 추출 (HTML 제거 후 160자)
+        $rawText    = mb_substr(trim(strip_tags($post->content)), 0, 160);
+        $description = mb_strlen($rawText) >= 155 ? $rawText . '...' : $rawText;
+
+        // OG 이미지: 게시글 첫 번째 첨부 이미지
+        $ogImage = DB::table('files')
+            ->where('file_kind', 'POST')
+            ->where('ref_id', $id)
+            ->orderBy('file_id')
+            ->value('file_url');
+
         return Inertia::render('Board/PostDetail', [
             'post'         => $post,
             'comments'     => $comments,
             'maxDepth'     => $maxDepth,
             'boardOptions' => $boardOptions,
             'userLikeType' => $userType,
+            'isScrapped'   => $isScrapped,
+            'scrapCount'   => $scrapCount,
             'prevPost'     => $prevPost,
             'nextPost'     => $nextPost,
+            'seo'          => [
+                'title'       => $post->title . ' | ' . $post->board_name . ' | ' . config('app.name'),
+                'description' => $description,
+                'canonical'   => url('/post/' . $id),
+                'ogType'      => 'article',
+                'ogImage'     => $ogImage ? url($ogImage) : null,
+                'publishedAt' => $post->created_at,
+                'author'      => $post->author,
+            ],
         ]);
     }
 }

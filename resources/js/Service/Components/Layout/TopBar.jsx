@@ -54,8 +54,8 @@ export default function TopBar() {
                 <div className="h-12 flex items-center">
                     {/* 로고 */}
                     <Link href="/" className="shrink-0 flex items-center gap-0.5 select-none">
-                        <span className="text-xl font-black tracking-tight text-white">COMM</span>
-                        <span className="text-xl font-black tracking-tight text-sky-400">GATE</span>
+                        <span className="text-xl font-black tracking-tight text-sky-400">KR</span>
+                        <span className="text-xl font-black tracking-tight text-white">LIVED</span>
                     </Link>
 
                     {/* 검색 — md 이상에서 정중앙 고정 (absolute) */}
@@ -90,11 +90,18 @@ export default function TopBar() {
                                             마이페이지
                                         </Link>
                                         <Link
+                                            href="/mypage?tab=scraps"
+                                            onClick={() => setDropOpen(false)}
+                                            className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:text-blue-500 hover:bg-slate-50 transition block"
+                                        >
+                                            내 스크랩
+                                        </Link>
+                                        <Link
                                             href="/mypage?tab=inquiries"
                                             onClick={() => setDropOpen(false)}
                                             className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:text-blue-500 hover:bg-slate-50 transition block"
                                         >
-                                            내문의
+                                            내 문의
                                         </Link>
                                         <Link
                                             href="/mypage?tab=password"

@@ -145,8 +145,9 @@ function UserPanel({ user }) {
             <div className="grid grid-cols-2 gap-1.5 text-xs">
                 <Link href="/mypage?tab=posts" className="text-center py-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-600 transition">내 게시글</Link>
                 <Link href="/mypage?tab=comments" className="text-center py-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-600 transition">내 댓글</Link>
+                <Link href="/mypage?tab=scraps" className="text-center py-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-600 transition">내 스크랩</Link>
                 <Link href="/mypage?tab=inquiries" className="text-center py-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-600 transition">내 문의</Link>
-                <Link href="/mypage?tab=password" className="text-center py-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-600 transition">비밀번호 변경</Link>
+                <Link href="/mypage?tab=password" className="col-span-2 text-center py-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-600 transition">비밀번호 변경</Link>
             </div>
             <Link
                 href="/logout"

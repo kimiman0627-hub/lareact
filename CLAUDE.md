@@ -95,7 +95,7 @@ app/
 │   ├── File/            # 파일 모델
 │   └── User/            # 유저 모델
 routes/
-├── web.php              # 일반 라우트 (/, /board/{category}, /post/{id})
+├── web.php              # 일반 라우트 (/, /board/{category}, /post/{id}, /sitemap.xml)
 ├── admin.php            # 관리자 라우트
 └── console.php
 config/

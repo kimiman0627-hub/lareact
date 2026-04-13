@@ -45,8 +45,10 @@ export default function AdminLayout({ children }) {
     return (
         <div className="flex min-h-screen bg-gray-100">
             <aside className="w-64 bg-slate-800 text-slate-100 flex flex-col shrink-0">
-                <div className="p-6 text-2xl font-bold text-yellow-500 border-b border-slate-700">
-                    Admin Panel
+                <div className="p-6 border-b border-slate-700 select-none">
+                    <span className="text-2xl font-black text-sky-400">KR</span>
+                    <span className="text-2xl font-black text-white">LIVED</span>
+                    <span className="ml-2 text-xs font-semibold text-slate-400 align-middle">Admin</span>
                 </div>
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     {adminMenu.map((item, index) => {

@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\Board\PostController;
 use App\Http\Controllers\Admin\Board\BoardController;
 use App\Http\Controllers\Admin\Board\CommentController;
 use App\Http\Controllers\Admin\Board\LikeController;
+use App\Http\Controllers\Admin\Board\ScrapController as AdminScrapController;
 use App\Http\Controllers\Admin\Banner\BannerController;
 use App\Http\Controllers\Admin\File\FileController;
 use App\Http\Controllers\Admin\Crawl\CrawlLogController;
@@ -32,7 +33,8 @@ Route::middleware(['auth:admin'])->group(function () {
     //   PUT|PATCH       admin/users/{user} ............... admin.users.update › Admin\User\UserController@update
     //   DELETE          admin/users/{user} ............. admin.users.destroy › Admin\User\UserController@destroy
     //   GET|HEAD        admin/users/{user}/edit .............. admin.users.edit › Admin\User\UserController@edit
-    Route::get('users/search', [UserController::class, 'search'])->name('admin.users.search');
+    Route::get('users/search',              [UserController::class, 'search'])->name('admin.users.search');
+    Route::get('users/{user}/activities',   [UserController::class, 'activities'])->name('admin.users.activities');
     Route::resource('users', UserController::class);
 
     Route::get('posts/search', [PostController::class, 'search'])->name('posts.search');
@@ -40,6 +42,7 @@ Route::middleware(['auth:admin'])->group(function () {
     Route::resource('boards', BoardController::class);
 
     Route::get('likes',              [LikeController::class,   'index'])->name('likes.index');
+    Route::get('scraps',             [AdminScrapController::class, 'index'])->name('scraps.index');
     Route::get('comments',           [CommentController::class, 'index'])->name('comments.index');
     Route::post('comments',          [CommentController::class, 'store'])->name('comments.store');
     Route::put('comments/{id}',      [CommentController::class, 'update'])->name('comments.update');

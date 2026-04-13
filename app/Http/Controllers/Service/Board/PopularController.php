@@ -27,9 +27,9 @@ class PopularController extends Controller
 
         $total = (clone $baseQuery)->count();
 
+        // 인기점수 = 조회수 + 댓글수 × 50 (출처별 조회수 스케일 차이 보정)
         $posts = (clone $baseQuery)
-            ->orderByDesc('p.hits')
-            ->orderByDesc('p.comment_count')
+            ->orderByDesc(DB::raw('(p.hits + p.comment_count * 50)'))
             ->offset(($page - 1) * $perPage)
             ->limit($perPage)
             ->get([

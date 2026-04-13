@@ -16,7 +16,7 @@ class EtolandScraper extends BaseScraper
     private const SOURCE         = 'ETOLAND';
     private const DOMAIN         = 'etoland.co.kr';
     private const BASE_URL       = 'https://www.' . self::DOMAIN;
-    private const ANONYMOUS_NAME = '이토랜드_익명';
+    private const ANONYMOUS_NAME = '익명';
 
     private const BOARDS = [
         'etohumor07' => ['path' => '/bbs/board.php?bo_table=etohumor07', 'category' => 'free'],
@@ -87,7 +87,7 @@ class EtolandScraper extends BaseScraper
                     continue;
                 }
                 $this->crawlPost($client, $boardName, $boardInfo['category'], $sourceId, $url);
-                sleep(rand(1, 2));
+                $this->throttle();
             }
 
         } catch (\Exception $e) {
@@ -130,10 +130,10 @@ class EtolandScraper extends BaseScraper
             $contentHtml = $this->fixVideoUrls($this->cleanContent($contentNode->html()), self::BASE_URL);
 
             // 썸네일 리사이즈 URL → 원본으로 복원 후 이미지 수집
-            $images = $this->collectImagesEtoland($contentNode);
+            $images = $this->collectImagesEtoland($contentNode, $boardName);
 
-            // 조회수: GnuBoard 표준 selector
-            $hits = $this->extractHits($c, ['#view_count', 'span.count', '.view_count', 'strong.count']);
+            // 조회수: GnuBoard5 표준 - <span class="views">13420</span>
+            $hits = $this->extractHits($c, ['span.views', '#view_count', '.view_count', 'span.count']);
 
             // DB 저장 (트랜잭션) — 이미지 HTTP 요청 없음
             $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml, $hits) {
@@ -160,7 +160,7 @@ class EtolandScraper extends BaseScraper
 
             if (!empty($downloaded)) {
                 $this->saveFileRecords($post->post_id, $downloaded);
-                $finalContent = $this->replaceImageUrls($contentHtml, $images, $downloaded);
+                $finalContent = $this->replaceEtolandImageUrls($contentHtml, $images, $downloaded);
                 if ($finalContent !== $contentHtml) {
                     $post->update(['content' => $finalContent]);
                 }
@@ -176,20 +176,32 @@ class EtolandScraper extends BaseScraper
 
     /**
      * 이토랜드 전용 이미지 수집.
-     * 썸네일 리사이즈 URL(/module/resize/...?src=/data/...) → 원본 경로로 복원.
+     * GnuBoard5 lazy-loading: data-file-src에 실제 파일명, src는 로딩 플레이스홀더.
+     * 리사이즈 프록시 URL(/module/resize/...?src=/data/...) → 원본 경로로 복원.
      */
-    private function collectImagesEtoland(Crawler $contentNode): array
+    private function collectImagesEtoland(Crawler $contentNode, string $boardName): array
     {
         $images = [];
 
-        $contentNode->filter('img')->each(function (Crawler $img) use (&$images) {
-            $src     = $img->attr('src')      ?? '';
-            $dataSrc = $img->attr('data-src') ?? '';
+        $contentNode->filter('img')->each(function (Crawler $img) use ($boardName, &$images) {
+            $dataFileSrc = $img->attr('data-file-src') ?? '';
+            $src         = $img->attr('src')           ?? '';
+            $dataSrc     = $img->attr('data-src')      ?? '';
 
+            // GnuBoard5 lazy-loading: data-file-src가 실제 이미지 파일명
+            if ($dataFileSrc && !str_starts_with($dataFileSrc, 'data:')) {
+                if (isset($images[$dataFileSrc])) return;
+                // CDN 경로: /data/file/[board_table]/[filename]
+                $cdnUrl = self::BASE_URL . '/data/file/' . $boardName . '/' . $dataFileSrc;
+                $images[$dataFileSrc] = ['resolved' => $cdnUrl, 'attr' => 'data-file-src'];
+                return;
+            }
+
+            // 일반 data-src 또는 src (로딩 플레이스홀더 제외)
             if ($dataSrc && !str_starts_with($dataSrc, 'data:')) {
                 $originalSrc = $dataSrc;
                 $attrName    = 'data-src';
-            } elseif ($src && !str_starts_with($src, 'data:')) {
+            } elseif ($src && !str_starts_with($src, 'data:') && !str_contains($src, 'loading_img')) {
                 $originalSrc = $src;
                 $attrName    = 'src';
             } else {
@@ -212,5 +224,59 @@ class EtolandScraper extends BaseScraper
         });
 
         return $images;
+    }
+
+    /**
+     * 이토랜드 전용 이미지 URL 교체.
+     * data-file-src 방식: 플레이스홀더 src를 서버 URL로 교체하고 data-file-src 속성 제거.
+     * 그 외는 BaseScraper::replaceImageUrls 와 동일.
+     */
+    private function replaceEtolandImageUrls(string $content, array $images, array $downloaded): string
+    {
+        foreach ($downloaded as $originalSrc => $fileInfo) {
+            $serverUrl = $fileInfo['file_url'];
+            $attrName  = $images[$originalSrc]['attr'] ?? 'src';
+
+            if ($attrName === 'data-file-src') {
+                // <img ... src="[placeholder]" ... data-file-src="TOKEN" ...> 처리:
+                // 1) 플레이스홀더 src → 서버 URL로 교체
+                // 2) data-file-src 속성 제거
+                $content = preg_replace_callback(
+                    '/<img\b([^>]*)\bdata-file-src=["\']' . preg_quote($originalSrc, '/') . '["\']([^>]*)>/i',
+                    function (array $m) use ($serverUrl): string {
+                        $before = $m[1];
+                        $after  = $m[2];
+                        $full   = $before . $after;
+
+                        // 로딩 플레이스홀더 src 속성을 서버 URL로 교체
+                        if (preg_match('/\bsrc=["\'][^"\']*loading[^"\']*["\']/i', $full)) {
+                            $full = preg_replace(
+                                '/\bsrc=["\'][^"\']*loading[^"\']*["\']/i',
+                                'src="' . $serverUrl . '"',
+                                $full
+                            );
+                        } else {
+                            // src 속성이 없거나 다른 src인 경우 앞에 추가
+                            $full = 'src="' . $serverUrl . '" ' . $full;
+                        }
+
+                        // 공백 정리
+                        $full = trim(preg_replace('/\s+/', ' ', $full));
+                        return '<img ' . $full . '>';
+                    },
+                    $content
+                );
+            } elseif ($attrName === 'data-src') {
+                $content = str_replace(
+                    ['data-src="' . $originalSrc . '"', "data-src='" . $originalSrc . "'"],
+                    'src="' . $serverUrl . '"',
+                    $content
+                );
+            } else {
+                $content = str_replace($originalSrc, $serverUrl, $content);
+            }
+        }
+
+        return $content;
     }
 }

@@ -360,7 +360,62 @@ function PasswordTab() {
     );
 }
 
-export default function MyPage({ tab, posts, comments, inquiries }) {
+function ScrapsTab({ scraps }) {
+    const items    = scraps?.data ?? [];
+    const meta     = scraps?.meta ?? scraps ?? {};
+    const lastPage = meta.last_page ?? 1;
+    const curPage  = meta.current_page ?? 1;
+    const total    = meta.total ?? 0;
+
+    function goPage(page) {
+        router.get("/mypage", { tab: "scraps", page }, { preserveScroll: true });
+    }
+
+    return (
+        <div>
+            <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50">
+                <span className="text-xs text-slate-500">전체 {total}건</span>
+            </div>
+
+            {items.length === 0 ? (
+                <div className="py-16 text-center text-sm text-slate-400">
+                    스크랩한 게시글이 없습니다.
+                </div>
+            ) : (
+                <ul className="divide-y divide-gray-100">
+                    {items.map((item) => (
+                        <li key={item.scrap_id}>
+                            <Link
+                                href={`/post/${item.post_id}`}
+                                className="flex items-center gap-3 px-4 py-3 hover:bg-amber-50 transition group"
+                            >
+                                <svg className="shrink-0 w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                </svg>
+                                <span className="shrink-0 text-[10px] font-semibold text-white bg-amber-400 rounded px-1.5 py-0.5 leading-tight whitespace-nowrap">
+                                    {item.board_name}
+                                </span>
+                                <span className="flex-1 min-w-0 text-sm text-slate-700 group-hover:text-amber-600 transition truncate">
+                                    {item.title}
+                                </span>
+                                <div className="shrink-0 flex items-center gap-2.5 text-xs text-slate-400 whitespace-nowrap">
+                                    {item.comment_count > 0 && (
+                                        <span className="text-amber-400">[{item.comment_count}]</span>
+                                    )}
+                                    <span>{timeAgo(item.scrapped_at)}</span>
+                                </div>
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            <Pagination curPage={curPage} lastPage={lastPage} onPageChange={goPage} />
+        </div>
+    );
+}
+
+export default function MyPage({ tab, posts, comments, inquiries, scraps }) {
     const { auth } = usePage().props;
     const user = auth?.user;
 
@@ -408,6 +463,11 @@ export default function MyPage({ tab, posts, comments, inquiries }) {
                         onClick={() => switchTab("inquiries")}
                     />
                     <TabButton
+                        label="스크랩"
+                        active={tab === "scraps"}
+                        onClick={() => switchTab("scraps")}
+                    />
+                    <TabButton
                         label="비밀번호 변경"
                         active={tab === "password"}
                         onClick={() => switchTab("password")}
@@ -418,6 +478,7 @@ export default function MyPage({ tab, posts, comments, inquiries }) {
                 {tab === "posts"      && <PostsTab      posts={posts} />}
                 {tab === "comments"  && <CommentsTab  comments={comments} />}
                 {tab === "inquiries" && <InquiriesTab inquiries={inquiries} />}
+                {tab === "scraps"    && <ScrapsTab    scraps={scraps} />}
                 {tab === "password"  && <PasswordTab />}
             </div>
         </ServiceLayout>

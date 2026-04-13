@@ -94,7 +94,7 @@ class TheqooScraper extends BaseScraper
                     continue;
                 }
                 $this->crawlPost($client, $sourceId, $url, $defaultCategory);
-                sleep(rand(1, 2));
+                $this->throttle();
             }
 
         } catch (\Exception $e) {
@@ -145,8 +145,8 @@ class TheqooScraper extends BaseScraper
 
             $images = $this->collectImages($contentNode, self::BASE_URL);
 
-            // 조회수: XE 엔진 표준 selector
-            $hits = $this->extractHits($c, ['span.view_count', '.view_count', '.rd_num_view']);
+            // 조회수: 더쿠는 조회수가 JS 렌더링이므로 스크랩수/추천수를 대체값으로 사용
+            $hits = $this->extractHits($c, ['#scrapped_count', '#voted_count', 'span.view_count', '.view_count']);
 
             // DB 저장 (트랜잭션)
             $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml, $hits) {

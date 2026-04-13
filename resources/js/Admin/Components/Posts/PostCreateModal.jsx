@@ -102,6 +102,9 @@ const PostCreateModal = ({
                     toDatetimeLocal(selectedPost.created_at) ||
                     nowDatetimeLocal(),
                 banner_ids: selectedPost.banner_ids ?? [],
+                hits:          selectedPost.hits          ?? 0,
+                like_count:    selectedPost.like_count    ?? 0,
+                dislike_count: selectedPost.dislike_count ?? 0,
             });
             // 수정 모드: 기존 회원 정보를 UserSearchInput 초기값으로 표시
             const name = selectedPost.name ?? "";
@@ -350,6 +353,56 @@ const PostCreateModal = ({
                             )}
                         </div>
                     </div>
+
+                    {/* 통계 정보 — 수정 모드에서만 표시 */}
+                    {selectedPost && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-600">통계</label>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">조회수</label>
+                                    <input
+                                        type="number"
+                                        name="hits"
+                                        value={formData.hits ?? 0}
+                                        onChange={handleChange}
+                                        min={0}
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">좋아요</label>
+                                    <input
+                                        type="number"
+                                        name="like_count"
+                                        value={formData.like_count ?? 0}
+                                        onChange={handleChange}
+                                        min={0}
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">싫어요</label>
+                                    <input
+                                        type="number"
+                                        name="dislike_count"
+                                        value={formData.dislike_count ?? 0}
+                                        onChange={handleChange}
+                                        min={0}
+                                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500">댓글수 / 스크랩</label>
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 flex items-center gap-2">
+                                        <span>💬 {selectedPost.comment_count ?? 0}</span>
+                                        <span className="text-slate-300">·</span>
+                                        <span>🔖 {selectedPost.scrap_count ?? 0}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-600">

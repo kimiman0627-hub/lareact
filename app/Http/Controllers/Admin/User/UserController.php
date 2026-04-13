@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use App\Models\User\User;
 use App\Lib\User\User as UserLib;
 use Inertia\Inertia;
@@ -28,10 +29,10 @@ class UserController extends Controller
         }
 
         $paginatedData = new LengthAwarePaginator(
-            $list, 
-            $total, 
-            $this->params['per_page'] ?? 20, 
-            $this->params['page'] ?? 1, 
+            $list,
+            $total,
+            $params['per_page'] ?? 20,
+            $params['page']     ?? 1,
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
@@ -56,6 +57,90 @@ class UserController extends Controller
             'page'        => 'nullable|integer|min:1',
         ]);
         return $params;
+    }
+
+    // 회원 상세 (JSON) — 상세/수정 모달에서 호출
+    public function show($id)
+    {
+        $user = User::findOrFail($id);
+
+        $stats = [
+            'post_count'     => DB::table('posts')->where('user_id', $id)->whereNull('deleted_at')->count(),
+            'comment_count'  => DB::table('comments')->where('user_id', $id)->whereNull('deleted_at')->count(),
+            'scrap_count'    => DB::table('scraps')->where('user_id', $id)->count(),
+            'like_count'     => DB::table('post_likes')->where('user_id', $id)->count(),
+            'inquiry_count'  => DB::table('inquiries')->where('user_id', $id)->count(),
+        ];
+
+        return response()->json([
+            'id'                => $user->id,
+            'name'              => $user->name,
+            'email'             => $user->email,
+            'user_role'         => $user->user_role ?? 'USER',
+            'email_verified_at' => $user->email_verified_at,
+            'created_at'        => $user->created_at,
+            'updated_at'        => $user->updated_at,
+            'stats'             => $stats,
+        ]);
+    }
+
+    // 회원 활동 내역 (JSON) — 탭별 페이지네이션
+    public function activities(Request $request, $id)
+    {
+        User::findOrFail($id); // 존재 확인
+
+        $type    = $request->input('type', 'posts');
+        $page    = max(1, (int) $request->input('page', 1));
+        $perPage = 15;
+        $offset  = ($page - 1) * $perPage;
+
+        switch ($type) {
+            case 'posts':
+                $total = DB::table('posts')
+                    ->where('user_id', $id)->whereNull('deleted_at')->count();
+                $items = DB::table('posts as p')
+                    ->leftJoin('boards as b', 'p.post_category', '=', 'b.category')
+                    ->where('p.user_id', $id)
+                    ->whereNull('p.deleted_at')
+                    ->orderByDesc('p.created_at')
+                    ->offset($offset)->limit($perPage)
+                    ->get(['p.post_id', 'p.title', 'p.post_status', 'p.hits',
+                           'p.comment_count', 'p.created_at', 'b.board_name']);
+                break;
+
+            case 'comments':
+                $total = DB::table('comments')
+                    ->where('user_id', $id)->whereNull('deleted_at')->count();
+                $items = DB::table('comments as c')
+                    ->leftJoin('posts as p', 'c.post_id', '=', 'p.post_id')
+                    ->where('c.user_id', $id)
+                    ->whereNull('c.deleted_at')
+                    ->orderByDesc('c.created_at')
+                    ->offset($offset)->limit($perPage)
+                    ->get(['c.comment_id', 'c.content', 'c.created_at',
+                           'p.post_id', 'p.title as post_title']);
+                break;
+
+            case 'inquiries':
+                $total = DB::table('inquiries')->where('user_id', $id)->count();
+                $items = DB::table('inquiries')
+                    ->where('user_id', $id)
+                    ->orderByDesc('created_at')
+                    ->offset($offset)->limit($perPage)
+                    ->get(['id', 'title', 'type', 'status', 'created_at', 'answered_at']);
+                break;
+
+            default:
+                return response()->json(['items' => [], 'total' => 0, 'last_page' => 1, 'page' => 1]);
+        }
+
+        return response()->json([
+            'items'     => $items,
+            'total'     => $total,
+            'page'      => $page,
+            'per_page'  => $perPage,
+            'last_page' => max(1, (int) ceil($total / $perPage)),
+        ]);
     }
 
     public function search(Request $request)
@@ -90,12 +175,13 @@ class UserController extends Controller
     protected function setUser(Request $request)
     {
         $data = $request->validate([
-            'name'  => 'required|string|max:255',
-            'email' => [
+            'name'      => 'required|string|max:255',
+            'email'     => [
                 'required', 'email', 'max:255',
                 Rule::unique('users')->ignore($request->id),
             ],
-            'password' => $request->id ? 'nullable|min:8' : 'required|min:8',
+            'password'  => $request->id ? 'nullable|min:8' : 'required|min:8',
+            'user_role' => 'nullable|in:USER,ADMIN,TEST',
         ]);
 
         if ($request->filled('password')) {

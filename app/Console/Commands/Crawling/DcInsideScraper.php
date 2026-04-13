@@ -15,7 +15,7 @@ class DcInsideScraper extends BaseScraper
 
     private const SOURCE         = 'DCINSIDE';
     private const BASE_URL       = 'https://gall.dcinside.com';
-    private const ANONYMOUS_NAME = 'DC_익명';
+    private const ANONYMOUS_NAME = '익명';
 
     private const GALLERIES = [
         'programming'   => 'free',
@@ -102,7 +102,7 @@ class DcInsideScraper extends BaseScraper
                         continue;
                     }
                     $this->crawlPost($client, $galleryId, $category, $postNo, $url);
-                    sleep(rand(1, 2));
+                    $this->throttle();
                 }
 
             } catch (\Exception $e) {
@@ -142,8 +142,8 @@ class DcInsideScraper extends BaseScraper
 
             $images = $this->collectImages($contentNode, self::BASE_URL);
 
-            // 조회수: .gall_count .view_count → .view_count 순으로 시도
-            $hits = $this->extractHits($c, ['.gall_count .view_count', '.view_count', '.gall_count']);
+            // 조회수: <span class="gall_count">조회 135</span>
+            $hits = $this->extractHits($c, ['.gall_count', '.view_count']);
 
             // DB 저장 (트랜잭션) — 이미지 HTTP 요청 없음
             $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml, $hits) {

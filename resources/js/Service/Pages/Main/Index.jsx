@@ -1,14 +1,23 @@
-import { usePage } from "@inertiajs/react";
+import { Head, usePage } from "@inertiajs/react";
 import ServiceLayout from "@/Service/Layouts/ServiceLayout";
 import BoardSection from "@/Service/Components/Board/BoardSection";
 import BannerSlot from "@/Service/Components/Banner/BannerSlot";
 import PopularWidget from "@/Service/Components/Board/PopularWidget";
 
-export default function MainIndex({ boards = [], popularPosts = [] }) {
+export default function MainIndex({ boards = [], popularPosts = [], seo = {} }) {
     const { props } = usePage();
 
     return (
         <ServiceLayout theme="light">
+            <Head>
+                <title>{seo.title ?? '커뮤니티 포털'}</title>
+                <meta name="description" content={seo.description ?? ''} />
+                <link rel="canonical" href={seo.canonical ?? ''} />
+                <meta property="og:type" content="website" />
+                <meta property="og:title" content={seo.title ?? '커뮤니티 포털'} />
+                <meta property="og:description" content={seo.description ?? ''} />
+                <meta property="og:url" content={seo.canonical ?? ''} />
+            </Head>
             <div className="space-y-4">
                 <PopularWidget posts={popularPosts} />
                 {boards.map((board, i) => (

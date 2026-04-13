@@ -42,6 +42,11 @@ return [
                     'route' => 'admin.likes.index',
                 ],
                 [
+                    'title' => '스크랩 내역',
+                    'icon' => 'fa-solid fa-bookmark',
+                    'route' => 'admin.scraps.index',
+                ],
+                [
                     'title' => '게시판 설정',
                     'icon' => 'fa-solid fa-sliders',
                     'route' => 'admin.boards.index',

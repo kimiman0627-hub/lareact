@@ -87,6 +87,11 @@ export default function PostIndex({
             email: item.email,
             name: item.name,
             banner_ids: item.banner_ids ?? [],
+            hits: item.hits ?? 0,
+            like_count: item.like_count ?? 0,
+            dislike_count: item.dislike_count ?? 0,
+            comment_count: item.comment_count ?? 0,
+            scrap_count: item.scrap_count ?? 0,
         });
         setIsPostModalOpen(true);
     };

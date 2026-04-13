@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, useForm, usePage } from "@inertiajs/react";
+import React, { useState, useRef, useEffect } from "react";
+import { Head, Link, useForm, usePage } from "@inertiajs/react";
 import ServiceLayout from "@/Service/Layouts/ServiceLayout";
 import { timeAgo, fmtHits } from "@/Service/Components/Board/BoardCard";
 import axios from "axios";
@@ -146,6 +146,135 @@ function CommentItem({ comment, postId, authUser, maxDepth, replies = [], allCom
     );
 }
 
+/** 공유 버튼 (클립보드 복사 + SNS) */
+function ShareButton({ title }) {
+    const [open, setOpen] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const ref = useRef(null);
+
+    // 바깥 클릭 시 닫기
+    useEffect(() => {
+        function onClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+        if (open) document.addEventListener('mousedown', onClick);
+        return () => document.removeEventListener('mousedown', onClick);
+    }, [open]);
+
+    function copyUrl() {
+        const url = window.location.href;
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(url).then(() => {
+                setCopied(true);
+                setTimeout(() => { setCopied(false); setOpen(false); }, 1500);
+            });
+        } else {
+            // HTTP 환경 fallback
+            const el = document.createElement('textarea');
+            el.value = url;
+            el.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            setCopied(true);
+            setTimeout(() => { setCopied(false); setOpen(false); }, 1500);
+        }
+    }
+
+    const encodedUrl   = encodeURIComponent(window.location.href);
+    const encodedTitle = encodeURIComponent(title ?? '');
+
+    return (
+        <div className="relative" ref={ref}>
+            <button
+                onClick={() => setOpen(v => !v)}
+                className="flex items-center gap-1 text-xs text-slate-400 hover:text-blue-500 transition"
+                title="공유"
+            >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                공유
+            </button>
+
+            {open && (
+                <div className="absolute bottom-full right-0 mb-2 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-50">
+                    <button
+                        onClick={copyUrl}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
+                    >
+                        {copied
+                            ? <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        }
+                        {copied ? '복사됨!' : 'URL 복사'}
+                    </button>
+                    <a
+                        href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`}
+                        target="_blank" rel="noreferrer"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
+                    >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.261 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                        </svg>
+                        X (Twitter)
+                    </a>
+                    <a
+                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
+                        target="_blank" rel="noreferrer"
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
+                    >
+                        <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                        </svg>
+                        Facebook
+                    </a>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/** 스크랩 버튼 */
+function ScrapButton({ postId, initialScrapped, initialCount, authUser }) {
+    const [scrapped, setScrapped] = useState(initialScrapped ?? false);
+    const [count, setCount]       = useState(initialCount ?? 0);
+    const [loading, setLoading]   = useState(false);
+
+    async function handleToggle() {
+        if (!authUser) {
+            window.location.href = '/login';
+            return;
+        }
+        if (loading) return;
+        setLoading(true);
+        try {
+            const res = await axios.post(`/post/${postId}/scrap`);
+            setScrapped(res.data.scrapped);
+            setCount(res.data.count);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    return (
+        <button
+            onClick={handleToggle}
+            disabled={loading}
+            title={scrapped ? '스크랩 취소' : '스크랩'}
+            className={`flex items-center gap-1 text-xs transition disabled:opacity-50 ${
+                scrapped ? 'text-amber-500 hover:text-amber-600' : 'text-slate-400 hover:text-amber-500'
+            }`}
+        >
+            <svg className="w-4 h-4" fill={scrapped ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+            스크랩{count > 0 && <span className="font-mono ml-0.5">{count}</span>}
+        </button>
+    );
+}
+
 /** 좋아요/싫어요 바 */
 function LikeBar({ postId, initialLike, initialDislike, initialUserType, useLike, useDislike, authUser }) {
     const [likeCount, setLikeCount]   = useState(initialLike ?? 0);
@@ -210,7 +339,7 @@ function LikeBar({ postId, initialLike, initialDislike, initialUserType, useLike
     );
 }
 
-export default function PostDetail({ post, comments = [], maxDepth = 2, boardOptions = {}, userLikeType = null, prevPost = null, nextPost = null }) {
+export default function PostDetail({ post, comments = [], maxDepth = 2, boardOptions = {}, userLikeType = null, isScrapped = false, scrapCount = 0, prevPost = null, nextPost = null, seo = {} }) {
     const { auth } = usePage().props;
     const authUser  = auth?.user ?? null;
     const [showReport, setShowReport] = useState(false);
@@ -218,8 +347,35 @@ export default function PostDetail({ post, comments = [], maxDepth = 2, boardOpt
     // 최상위 댓글만 뽑아서 렌더링 (대댓글은 재귀로 처리)
     const topLevel = comments.filter(c => !c.parent_id);
 
+    // JSON-LD 구조화 데이터 (Article 스키마)
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: post.title,
+        description: seo.description ?? '',
+        author: { '@type': 'Person', name: post.author },
+        datePublished: seo.publishedAt ?? post.created_at,
+        url: seo.canonical ?? '',
+        ...(seo.ogImage ? { image: seo.ogImage } : {}),
+    };
+
     return (
         <ServiceLayout theme="light">
+            <Head>
+                <title>{seo.title ?? post.title}</title>
+                <meta name="description" content={seo.description ?? ''} />
+                <link rel="canonical" href={seo.canonical ?? ''} />
+                <meta property="og:type" content="article" />
+                <meta property="og:title" content={seo.title ?? post.title} />
+                <meta property="og:description" content={seo.description ?? ''} />
+                <meta property="og:url" content={seo.canonical ?? ''} />
+                {seo.ogImage && <meta property="og:image" content={seo.ogImage} />}
+                {seo.publishedAt && <meta property="article:published_time" content={seo.publishedAt} />}
+                <meta name="twitter:title" content={seo.title ?? post.title} />
+                <meta name="twitter:description" content={seo.description ?? ''} />
+                {seo.ogImage && <meta name="twitter:image" content={seo.ogImage} />}
+                <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+            </Head>
             {/* 브레드크럼 */}
             <div className="flex items-center gap-2 mb-4 text-sm text-slate-400">
                 <Link href="/" className="hover:text-blue-500 transition">홈</Link>
@@ -322,15 +478,24 @@ export default function PostDetail({ post, comments = [], maxDepth = 2, boardOpt
                     <Link href={`/board/${post.category}`} className="text-sm text-slate-500 hover:text-blue-500 transition">
                         ← 목록
                     </Link>
-                    <button
-                        onClick={() => setShowReport(true)}
-                        className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 transition"
-                    >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H13l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-                        </svg>
-                        신고
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <ScrapButton
+                            postId={post.post_id}
+                            initialScrapped={isScrapped}
+                            initialCount={scrapCount}
+                            authUser={authUser}
+                        />
+                        <ShareButton title={post.title} />
+                        <button
+                            onClick={() => setShowReport(true)}
+                            className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 transition"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H13l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                            </svg>
+                            신고
+                        </button>
+                    </div>
                 </div>
             </article>
 

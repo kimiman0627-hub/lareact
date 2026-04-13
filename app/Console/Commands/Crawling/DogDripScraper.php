@@ -16,7 +16,7 @@ class DogDripScraper extends BaseScraper
     private const SOURCE         = 'DOGDRIP';
     private const DOMAIN         = 'dogdrip.net';
     private const BASE_URL       = 'https://www.' . self::DOMAIN;
-    private const ANONYMOUS_NAME = '개드립_익명';
+    private const ANONYMOUS_NAME = '익명';
 
     private const BOARDS = [
         'dogdrip' => '/dogdrip',
@@ -99,7 +99,7 @@ class DogDripScraper extends BaseScraper
                     continue;
                 }
                 $this->crawlPost($client, $boardName, $sourceId, $url);
-                sleep(rand(1, 2));
+                $this->throttle();
             }
 
         } catch (\Exception $e) {
@@ -132,8 +132,9 @@ class DogDripScraper extends BaseScraper
 
             $images = $this->collectImages($contentNode, self::BASE_URL);
 
-            // 조회수: XE 엔진 표준 selector
-            $hits = $this->extractHits($c, ['span.view_count', '.view_count', '.rd_num_view']);
+            // 조회수: 개드립은 조회수가 JS 렌더링이므로 추천수를 대체값으로 사용
+            // <span class="num" id="document_voted_count">87</span>
+            $hits = $this->extractHits($c, ['#document_voted_count', 'span.view_count', '.view_count']);
 
             // DB 저장 (트랜잭션) — 이미지 HTTP 요청 없음
             $post = DB::transaction(function () use ($sourceId, $boardName, $title, $author, $contentHtml, $hits) {

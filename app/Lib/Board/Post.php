@@ -88,7 +88,8 @@ class Post
             return DB::select("SELECT P.*,
                     U.email, U.name,
                     STRING_AGG(PB.banner_id::text, ',') AS banner_ids,
-                    EXISTS (SELECT 1 FROM files WHERE file_kind = 'POST' AND ref_id = P.post_id) AS has_image
+                    EXISTS (SELECT 1 FROM files WHERE file_kind = 'POST' AND ref_id = P.post_id) AS has_image,
+                    (SELECT COUNT(*) FROM scraps WHERE post_id = P.post_id) AS scrap_count
                 FROM posts AS P
                 INNER JOIN users AS U ON P.user_id = U.id
                 LEFT JOIN post_banners AS PB ON P.post_id = PB.post_id

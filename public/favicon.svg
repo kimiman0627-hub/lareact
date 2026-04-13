@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- 배경: 둥근 사각형, 사이트 다크 컬러 -->
+  <rect width="32" height="32" rx="7" fill="#0d1b2a"/>
+
+  <!-- K -->
+  <text x="2" y="23" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="18" fill="#38bdf8">K</text>
+
+  <!-- R -->
+  <text x="14" y="23" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="18" fill="#ffffff">R</text>
+</svg>

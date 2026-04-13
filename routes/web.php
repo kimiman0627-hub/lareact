@@ -11,6 +11,13 @@ use App\Http\Controllers\Service\Search\SearchController;
 use App\Http\Controllers\Service\User\MypageController;
 use App\Http\Controllers\Service\Inquiry\InquiryController;
 use App\Http\Controllers\Service\Board\ReportController;
+use App\Http\Controllers\Service\Board\ScrapController;
+use App\Http\Controllers\Service\SitemapController;
+
+// 사이트맵
+Route::get('/sitemap.xml',       [SitemapController::class, 'index']);
+Route::get('/sitemap-pages.xml', [SitemapController::class, 'pages']);
+Route::get('/sitemap-posts.xml', [SitemapController::class, 'posts']);
 
 // 서비스 메인
 Route::get('/', [MainController::class, 'index']);
@@ -32,6 +39,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/comment/{id}', [CommentController::class, 'destroy'])->name('comment.destroy');
     Route::post('/post/{id}/like', [LikeController::class, 'toggle'])->name('post.like');
     Route::post('/post/{id}/report', [ReportController::class, 'store'])->name('post.report');
+    Route::post('/post/{id}/scrap', [ScrapController::class, 'toggle'])->name('post.scrap');
 
     // 마이페이지
     Route::get('/mypage', [MypageController::class, 'index'])->name('mypage');

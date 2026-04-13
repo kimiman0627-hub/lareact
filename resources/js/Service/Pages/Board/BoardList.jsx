@@ -1,12 +1,11 @@
 import React from "react";
-import { Link } from "@inertiajs/react";
-import { router } from "@inertiajs/react";
+import { Head, Link, router } from "@inertiajs/react";
 import ServiceLayout from "@/Service/Layouts/ServiceLayout";
 import { timeAgo, fmtHits } from "@/Service/Components/Board/BoardCard";
 import Pagination from "@/Service/Components/Common/Pagination";
 
 
-export default function BoardList({ board, list }) {
+export default function BoardList({ board, list, seo = {} }) {
     const posts     = list.data ?? [];
     const meta      = list.meta ?? list;
     const lastPage  = meta.last_page ?? 1;
@@ -18,6 +17,15 @@ export default function BoardList({ board, list }) {
 
     return (
         <ServiceLayout theme="light">
+            <Head>
+                <title>{seo.title ?? board.board_name}</title>
+                <meta name="description" content={seo.description ?? ''} />
+                <link rel="canonical" href={seo.canonical ?? ''} />
+                <meta property="og:type" content="website" />
+                <meta property="og:title" content={seo.title ?? board.board_name} />
+                <meta property="og:description" content={seo.description ?? ''} />
+                <meta property="og:url" content={seo.canonical ?? ''} />
+            </Head>
             {/* 헤더 */}
             <div className="flex items-center gap-2 mb-4">
                 <Link href="/" className="text-sm text-slate-400 hover:text-blue-500 transition">홈</Link>

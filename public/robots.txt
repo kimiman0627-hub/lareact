@@ -1,2 +1,13 @@
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /admin/
+Disallow: /mypage
+Disallow: /login
+Disallow: /register
+Disallow: /inquiry
+Disallow: /logout
+
+# 검색 파라미터가 붙은 게시판 목록은 색인 제외 (중복 콘텐츠 방지)
+Disallow: /board/*?*
+
+Sitemap: /sitemap.xml

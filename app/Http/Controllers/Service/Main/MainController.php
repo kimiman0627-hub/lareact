@@ -13,7 +13,18 @@ class MainController extends Controller
     public function index()
     {
         Inertia::setRootView('app');
-        return Inertia::render('Main/Index', $this->getMainData());
+
+        $siteName    = config('app.name');
+        $description = '다양한 주제의 게시글을 읽고 쓰는 커뮤니티 포털입니다. 유머, 연예, 스포츠, 게임, 주식 등 다양한 카테고리의 인기 게시글을 만나보세요.';
+
+        return Inertia::render('Main/Index', array_merge($this->getMainData(), [
+            'seo' => [
+                'title'       => $siteName . ' | 커뮤니티 포털',
+                'description' => $description,
+                'canonical'   => url('/'),
+                'ogType'      => 'website',
+            ],
+        ]));
     }
 
     // 추후 다른 버전이 필요할 경우 사용
@@ -43,7 +54,7 @@ class MainController extends Controller
             ->where('p.post_status', 'ACTIVE')
             ->whereNull('p.deleted_at')
             ->where('p.created_at', '>=', now()->subDays(7))
-            ->orderByDesc('p.hits')
+            ->orderByDesc(DB::raw('(p.hits + p.comment_count * 50)'))
             ->limit(5)
             ->get([
                 'p.post_id', 'p.title', 'p.hits', 'p.comment_count', 'p.created_at',

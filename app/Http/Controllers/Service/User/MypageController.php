@@ -47,6 +47,7 @@ class MypageController extends Controller
         $posts     = null;
         $comments  = null;
         $inquiries = null;
+        $scraps    = null;
 
         if ($tab === 'posts') {
             $base = DB::table('posts as p')
@@ -112,6 +113,32 @@ class MypageController extends Controller
                 'path'  => $request->url(),
                 'query' => $request->query(),
             ]);
+        } elseif ($tab === 'scraps') {
+            $base = DB::table('scraps as s')
+                ->join('posts as p', 's.post_id', '=', 'p.post_id')
+                ->join('users as u', 'p.user_id', '=', 'u.id')
+                ->join('boards as b', 'p.post_category', '=', 'b.category')
+                ->where('s.user_id', $userId)
+                ->where('p.post_status', 'ACTIVE')
+                ->whereNull('p.deleted_at');
+
+            $total = (clone $base)->count();
+
+            $items = (clone $base)
+                ->orderByDesc('s.created_at')
+                ->offset(($page - 1) * self::PER_PAGE)
+                ->limit(self::PER_PAGE)
+                ->get([
+                    's.id as scrap_id', 's.created_at as scrapped_at',
+                    'p.post_id', 'p.title', 'p.hits', 'p.comment_count',
+                    'u.name as author',
+                    'b.board_name', 'b.category as board_category',
+                ]);
+
+            $scraps = new LengthAwarePaginator($items, $total, self::PER_PAGE, $page, [
+                'path'  => $request->url(),
+                'query' => $request->query(),
+            ]);
         }
 
         return Inertia::render('User/MyPage', [
@@ -119,6 +146,7 @@ class MypageController extends Controller
             'posts'     => $posts,
             'comments'  => $comments,
             'inquiries' => $inquiries,
+            'scraps'    => $scraps,
         ]);
     }
 
