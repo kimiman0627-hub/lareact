@@ -22,3 +22,6 @@ Schedule::command('crawl:theqoo')->hourlyAt(45);
 
 // 포모스 크롤링 - 매시간 10분에 실행
 Schedule::command('crawl:fomos')->hourlyAt(10);
+
+// 보배드림 크롤링 - 매시간 20분에 실행
+Schedule::command('crawl:bobaedream')->hourlyAt(20);

@@ -121,6 +121,9 @@ class EtolandScraper extends BaseScraper
 
             $writerNode = $c->filter('span.writer span.member')->first();
             $author     = $writerNode->count() ? trim($writerNode->text()) : self::ANONYMOUS_NAME;
+            if ($author === '이토랜드_익명') {
+                $author = self::ANONYMOUS_NAME;
+            }
 
             $contentNode = $c->filter('#view_content')->first();
             if (!$contentNode->count()) {

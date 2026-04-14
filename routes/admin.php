@@ -13,6 +13,8 @@ use App\Http\Controllers\Admin\File\FileController;
 use App\Http\Controllers\Admin\Crawl\CrawlLogController;
 use App\Http\Controllers\Admin\Inquiry\InquiryController as AdminInquiryController;
 use App\Http\Controllers\Admin\Report\ReportController as AdminReportController;
+use App\Http\Controllers\Admin\Stats\StatController;
+use App\Http\Controllers\Admin\Setting\SiteSettingController;
 
 // 관리자 
 
@@ -65,5 +67,12 @@ Route::middleware(['auth:admin'])->group(function () {
     // 신고 관리
     Route::get('reports',          [AdminReportController::class, 'index'])->name('reports.index');
     Route::patch('reports/{id}',   [AdminReportController::class, 'update'])->name('reports.update');
+
+    // 통계
+    Route::get('stats/users',      [StatController::class, 'index'])->name('stats.users');
+
+    // 사이트 설정
+    Route::get('settings/site',    [SiteSettingController::class, 'index'])->name('settings.site');
+    Route::post('settings/site',   [SiteSettingController::class, 'update'])->name('settings.site.update');
 });
 

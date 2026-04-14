@@ -8,6 +8,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
+    ->withCommands([
+        \App\Console\Commands\Crawling\DogDripScraper::class,
+        \App\Console\Commands\Crawling\DcInsideScraper::class,
+        \App\Console\Commands\Crawling\EtolandScraper::class,
+        \App\Console\Commands\Crawling\TheqooScraper::class,
+        \App\Console\Commands\Crawling\FomosScraper::class,
+        \App\Console\Commands\Crawling\BobaedreamScraper::class,
+    ])
     ->withRouting(
         web: __DIR__ . '/../routes/web.php',
         commands: __DIR__ . '/../routes/console.php',

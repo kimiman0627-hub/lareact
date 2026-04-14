@@ -13,8 +13,9 @@ export default defineConfig(({ mode }) => {
             port: 5173,
             strictPort: true,
             hmr: {
-                host: env.VITE_SERVER_HOST, // 브라우저가 접속할 공인 IP
-                clientPort: parseInt(env.VITE_HMR_CLIENT_PORT) || 80, // 브라우저는 80으로 접속
+                protocol:   'wss',                                      // HTTPS 환경에서는 wss 필수
+                host:       env.VITE_SERVER_HOST,                       // krlived.com
+                clientPort: parseInt(env.VITE_HMR_CLIENT_PORT) || 443, // 브라우저는 443으로 접속
             },
             watch: {
                 // vendor/, node_modules/ 는 변경될 일 없으므로 watch에서 제외

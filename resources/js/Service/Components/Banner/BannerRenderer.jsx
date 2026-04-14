@@ -1,61 +1,60 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 
 /**
- * HTML 문자열에서 <script> 태그를 추출하고, 나머지 HTML을 컨테이너에 렌더링한 뒤
- * 스크립트를 순서대로 주입한다.
+ * SCRIPT 타입 배너 — 격리된 srcdoc iframe에서 실행
  *
- * - 외부 스크립트(src)는 onload 후 다음 스크립트를 실행해 로딩 순서 보장
- * - 인라인 스크립트는 동기 실행
- * - requestAnimationFrame으로 DOM 페인트 완료 후 시작
- *
- * @returns {() => void} cleanup 함수 (언마운트 시 주입된 스크립트 제거)
+ * 외부 위젯 스크립트(쿠팡파트너스 G 등)는 document.body에 직접 요소를 삽입하는 경우가 있어
+ * iframe 내부에서 실행하여 메인 페이지 DOM에 영향을 주지 않도록 격리한다.
+ * postMessage로 콘텐츠 높이를 전달받아 iframe을 자동 리사이즈한다.
  */
-function injectBannerScript(container, htmlContent) {
-    const injected = [];
+function ScriptBanner({ banner, className }) {
+    const iframeRef = useRef(null);
+    const [height, setHeight] = useState(250);
 
-    // DOMParser로 HTML 파싱 (createContextualFragment보다 안정적)
-    const doc = new DOMParser().parseFromString(htmlContent, "text/html");
-    const scripts = Array.from(doc.querySelectorAll("script"));
+    const srcdoc = `<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { overflow: hidden; display: flex; justify-content: center; align-items: flex-start; }
+</style>
+</head>
+<body>
+${banner.content ?? ""}
+<script>
+(function() {
+  function report() {
+    var h = document.body.scrollHeight;
+    if (h > 0) parent.postMessage({ type: 'bannerResize', id: ${banner.banner_id}, height: h }, '*');
+  }
+  window.addEventListener('load', report);
+  setTimeout(report, 500);
+  setTimeout(report, 1500);
+})();
+<\/script>
+</body>
+</html>`;
 
-    // 스크립트 제거 후 나머지 HTML 렌더링
-    scripts.forEach((s) => s.remove());
-    container.innerHTML = doc.body.innerHTML;
-
-    // 스크립트를 index 순서대로 하나씩 주입
-    function injectNext(index) {
-        if (index >= scripts.length) return;
-
-        const src       = scripts[index];
-        const newScript = document.createElement("script");
-
-        // 원본 속성 복사 (type, async, defer, data-* 등)
-        Array.from(src.attributes).forEach(({ name, value }) => {
-            newScript.setAttribute(name, value);
-        });
-
-        if (src.src) {
-            // 외부 스크립트: 로드 완료 후 다음 실행
-            newScript.onload  = () => injectNext(index + 1);
-            newScript.onerror = () => injectNext(index + 1); // 실패해도 다음으로
-        } else {
-            // 인라인 스크립트
-            newScript.textContent = src.textContent;
+    useEffect(() => {
+        function onMessage(e) {
+            if (e.data?.type === 'bannerResize' && e.data.id === banner.banner_id) {
+                setHeight(e.data.height);
+            }
         }
+        window.addEventListener('message', onMessage);
+        return () => window.removeEventListener('message', onMessage);
+    }, [banner.banner_id]);
 
-        container.appendChild(newScript);
-        injected.push(newScript);
-
-        // 인라인은 즉시 다음으로 (외부는 onload에서 처리)
-        if (!src.src) injectNext(index + 1);
-    }
-
-    // DOM 페인트 완료 후 실행
-    const rafId = requestAnimationFrame(() => injectNext(0));
-
-    return () => {
-        cancelAnimationFrame(rafId);
-        injected.forEach((s) => s.parentNode?.removeChild(s));
-    };
+    return (
+        <iframe
+            ref={iframeRef}
+            srcDoc={srcdoc}
+            className={`w-full block ${className ?? ""}`}
+            style={{ height: `${height}px`, border: "none" }}
+            sandbox="allow-scripts"
+            title={banner.title || "advertisement"}
+        />
+    );
 }
 
 /**
@@ -65,17 +64,9 @@ function injectBannerScript(container, htmlContent) {
  * HTML   — dangerouslySetInnerHTML
  * IFRAME — dangerouslySetInnerHTML
  * VIDEO  — dangerouslySetInnerHTML
- * SCRIPT — DOM 직접 주입 (로딩 순서 보장)
+ * SCRIPT — 격리된 srcdoc iframe (외부 위젯 스크립트 안전 실행)
  */
 export default function BannerRenderer({ banner, className = "" }) {
-    const containerRef = useRef(null);
-
-    useEffect(() => {
-        if (banner.banner_type !== "SCRIPT" || !containerRef.current) return;
-        const cleanup = injectBannerScript(containerRef.current, banner.content ?? "");
-        return cleanup;
-    }, [banner.banner_id]);
-
     if (banner.banner_type === "IMAGE") {
         const img = (
             <img
@@ -96,7 +87,7 @@ export default function BannerRenderer({ banner, className = "" }) {
     }
 
     if (banner.banner_type === "SCRIPT") {
-        return <div ref={containerRef} className={className} />;
+        return <ScriptBanner banner={banner} className={className} />;
     }
 
     // HTML, IFRAME, VIDEO

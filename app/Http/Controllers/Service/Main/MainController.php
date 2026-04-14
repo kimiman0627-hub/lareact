@@ -39,8 +39,6 @@ class MainController extends Controller
         return [
             'boards'           => BoardModel::getBoards(),
             'popularPosts'     => $this->getPopularPosts(),
-            'sideBanners1'     => BannerModel::getActiveByPosition('SIDE1'),
-            'sideBanners2'     => BannerModel::getActiveByPosition('SIDE2'),
             'categoryBanners1' => BannerModel::getActiveByPosition('MAIN_BOARD_CATEGORY1'),
             'categoryBanners2' => BannerModel::getActiveByPosition('MAIN_BOARD_CATEGORY2'),
         ];

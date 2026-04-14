@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
+use App\Lib\Stats\StatRecorder;
 
 class AuthController extends Controller
 {
@@ -33,6 +34,7 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
+        StatRecorder::recordRegister();
         return redirect('/');
     }
 
@@ -52,6 +54,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+            StatRecorder::recordLogin();
             return redirect()->intended('/');
         }
 

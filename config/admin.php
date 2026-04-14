@@ -84,6 +84,30 @@ return [
             ],
         ],
         [
+            'title' => '사이트 설정',
+            'icon' => 'fa-solid fa-gear',
+            'route' => 'admin.settings.site',
+            'submenu' => [
+                [
+                    'title' => '코드 삽입 설정',
+                    'icon'  => 'fa-solid fa-code',
+                    'route' => 'admin.settings.site',
+                ],
+            ],
+        ],
+        [
+            'title' => '통계',
+            'icon' => 'fa-solid fa-chart-line',
+            'route' => 'admin.stats.users',
+            'submenu' => [
+                [
+                    'title' => '가입/로그인 통계',
+                    'icon' => 'fa-solid fa-users',
+                    'route' => 'admin.stats.users',
+                ],
+            ],
+        ],
+        [
             'title' => '로그',
             'icon' => 'fa-solid fa-spider',
             'route' => 'admin.crawl-logs.index',

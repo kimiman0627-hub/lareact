@@ -150,7 +150,7 @@ abstract class BaseScraper extends Command
                 // 네트워크 연결 실패 — 재시도
                 if ($attempt < $maxRetries) {
                     $wait = rand(5, 15);
-                    $this->warn("  연결 실패, {$wait}초 후 재시도 ({$attempt+1}/{$maxRetries}): {$url}");
+                    $this->warn("  연결 실패, {$wait}초 후 재시도 (" . ($attempt + 1) . "/{$maxRetries}): {$url}");
                     sleep($wait);
                     continue;
                 }
@@ -164,7 +164,7 @@ abstract class BaseScraper extends Command
                     // Too Many Requests: 충분히 쉬고 재시도
                     if ($attempt < $maxRetries) {
                         $wait = rand(30, 60);
-                        $this->warn("  429 Too Many Requests, {$wait}초 대기 후 재시도 ({$attempt+1}/{$maxRetries})");
+                        $this->warn("  429 Too Many Requests, {$wait}초 대기 후 재시도 (" . ($attempt + 1) . "/{$maxRetries})");
                         sleep($wait);
                         continue;
                     }
@@ -172,7 +172,7 @@ abstract class BaseScraper extends Command
                     // Service Unavailable: 잠시 후 재시도
                     if ($attempt < $maxRetries) {
                         $wait = rand(10, 20);
-                        $this->warn("  503 Service Unavailable, {$wait}초 대기 후 재시도 ({$attempt+1}/{$maxRetries})");
+                        $this->warn("  503 Service Unavailable, {$wait}초 대기 후 재시도 (" . ($attempt + 1) . "/{$maxRetries})");
                         sleep($wait);
                         continue;
                     }
@@ -302,7 +302,20 @@ abstract class BaseScraper extends Command
         for ($attempt = 0; $attempt <= $maxRetries; $attempt++) {
             try {
                 $response     = $client->get($imgUrl, ['timeout' => 20]);
-                $contents     = (string) $response->getBody();
+                $contents    = (string) $response->getBody();
+                $contentType = strtolower($response->getHeaderLine('Content-Type'));
+
+                // HTML/텍스트 응답 필터: 403/redirect 에러 페이지가 이미지로 저장되는 것 방지
+                if (str_contains($contentType, 'text/html') || str_contains($contentType, 'text/plain')) {
+                    $this->line("    이미지 스킵 (HTML 응답, 접근 차단 추정): {$imgUrl}");
+                    return null;
+                }
+
+                // Content-Type이 없을 때 본문이 HTML이면 스킵
+                if (!$contentType && str_starts_with(ltrim($contents), '<')) {
+                    $this->line("    이미지 스킵 (HTML 본문 감지): {$imgUrl}");
+                    return null;
+                }
 
                 // 최소 크기 필터: 트래킹 픽셀, 아이콘, 플레이스홀더 제외
                 if (strlen($contents) < self::MIN_IMAGE_SIZE) {

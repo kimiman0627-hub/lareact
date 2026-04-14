@@ -69,7 +69,7 @@ export default function Sidebar() {
     const { sideBanners2 = [] } = usePage().props;
 
     return (
-        <aside className="w-full lg:w-64 shrink-0 space-y-4">
+        <aside className="w-full lg:w-64 shrink-0 space-y-4 lg:self-start lg:sticky lg:top-20">
             {/* 로그인 위젯은 데스크톱에서만 표시 — 모바일은 TopBar에서 처리 */}
             <div className="hidden lg:block">
                 <AuthWidget />

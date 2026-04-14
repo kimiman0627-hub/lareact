@@ -13,11 +13,14 @@ use App\Http\Controllers\Service\Inquiry\InquiryController;
 use App\Http\Controllers\Service\Board\ReportController;
 use App\Http\Controllers\Service\Board\ScrapController;
 use App\Http\Controllers\Service\SitemapController;
+use App\Http\Middleware\HandleInertiaRequests;
 
-// 사이트맵
-Route::get('/sitemap.xml',       [SitemapController::class, 'index']);
-Route::get('/sitemap-pages.xml', [SitemapController::class, 'pages']);
-Route::get('/sitemap-posts.xml', [SitemapController::class, 'posts']);
+// 사이트맵 (Inertia 미들웨어 제외 — <script/> 주입 방지)
+Route::withoutMiddleware([HandleInertiaRequests::class])->group(function () {
+    Route::get('/sitemap.xml',       [SitemapController::class, 'index']);
+    Route::get('/sitemap-pages.xml', [SitemapController::class, 'pages']);
+    Route::get('/sitemap-posts.xml', [SitemapController::class, 'posts']);
+});
 
 // 서비스 메인
 Route::get('/', [MainController::class, 'index']);

@@ -6,14 +6,21 @@
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="alternate icon" href="/favicon.ico" />
         <meta name="robots" content="index, follow" />
+        <meta name="google-adsense-account" content="ca-pub-2524436697997672" />
         <meta property="og:locale" content="ko_KR" />
         <meta property="og:site_name" content="{{ config('app.name') }}" />
         <meta name="twitter:card" content="summary_large_image" />
         @inertiaHead
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/service.jsx'])
+        @if(!empty($siteSettings['head_code']))
+            {!! $siteSettings['head_code'] !!}
+        @endif
     </head>
     <body class="overflow-x-hidden">
         @inertia
+        @if(!empty($siteSettings['footer_code']))
+            {!! $siteSettings['footer_code'] !!}
+        @endif
     </body>
 </html>

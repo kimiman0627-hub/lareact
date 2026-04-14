@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Banner\Banner as BannerModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Middleware;
@@ -53,6 +54,14 @@ class HandleInertiaRequests extends Middleware
                 ->orderBy('board_id')
                 ->get(['board_id', 'board_name', 'category'])
                 ->toArray(),
+
+            // 사이드바 배너 (캐시 5분)
+            'sideBanners1' => cache()->remember('banners.side1', 300, fn () =>
+                BannerModel::getActiveByPosition('SIDE1')
+            ),
+            'sideBanners2' => cache()->remember('banners.side2', 300, fn () =>
+                BannerModel::getActiveByPosition('SIDE2')
+            ),
 
             // 사이드바 현황 통계 (캐시 적용)
             // today_posts / total_members: 3분 캐시 (자주 바뀌지 않음)
