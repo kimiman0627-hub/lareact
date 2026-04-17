@@ -130,10 +130,17 @@ class EtolandScraper extends BaseScraper
                 $this->warn("  본문 없음: {$url}");
                 return;
             }
-            $contentHtml = $this->fixVideoUrls($this->cleanContent($contentNode->html()), self::BASE_URL);
 
-            // 썸네일 리사이즈 URL → 원본으로 복원 후 이미지 수집
-            $images = $this->collectImagesEtoland($contentNode, $boardName);
+            // 본문 내 불필요한 UI 요소 제거
+            $rawHtml = $contentNode->html();
+            $rawHtml = preg_replace('/<div\b[^>]*\bview_document_address\b[^>]*>.*?<\/div>/is', '', $rawHtml);
+
+            $contentHtml = $this->fixVideoUrls($this->cleanContent($rawHtml), self::BASE_URL);
+
+            // view_document_address가 제거된 HTML로 새 Crawler 생성 후 이미지/비디오 수집
+            $cleanNode = new Crawler($contentHtml);
+            $images = $this->collectImagesEtoland($cleanNode, $boardName);
+            $videos = $this->collectVideos($cleanNode, self::BASE_URL);
 
             // 조회수: GnuBoard5 표준 - <span class="views">13420</span>
             $hits = $this->extractHits($c, ['span.views', '#view_count', '.view_count', 'span.count']);
@@ -160,17 +167,32 @@ class EtolandScraper extends BaseScraper
 
             // 이미지 다운로드 (트랜잭션 밖)
             $downloaded = $this->downloadImages($client, $images, $post->post_id);
+            $currentContent = $contentHtml;
 
             if (!empty($downloaded)) {
                 $this->saveFileRecords($post->post_id, $downloaded);
-                $finalContent = $this->replaceEtolandImageUrls($contentHtml, $images, $downloaded);
-                if ($finalContent !== $contentHtml) {
-                    $post->update(['content' => $finalContent]);
-                }
+                $currentContent = $this->replaceEtolandImageUrls($currentContent, $images, $downloaded);
+            }
+
+            // 다운로드 실패한 이미지 정리:
+            // loading_img placeholder src → data-src(이토랜드 원본 URL) fallback으로 교체
+            // data-src도 없으면 img 태그 제거
+            $currentContent = $this->cleanupUndownloadedImages($currentContent);
+
+            // 비디오 다운로드 (트랜잭션 밖)
+            $downloadedVideos = $this->downloadVideos($client, $videos, $post->post_id);
+
+            if (!empty($downloadedVideos)) {
+                $this->saveFileRecords($post->post_id, $downloadedVideos);
+                $currentContent = $this->replaceVideoUrls($currentContent, $videos, $downloadedVideos);
+            }
+
+            if ($currentContent !== $contentHtml) {
+                $post->update(['content' => $currentContent]);
             }
 
             $this->incSaved();
-            $this->info("  저장: [{$sourceId}] {$title} / 작성자: {$author} / 이미지: " . count($downloaded) . '/' . count($images) . '개');
+            $this->info("  저장: [{$sourceId}] {$title} / 작성자: {$author} / 이미지: " . count($downloaded) . '/' . count($images) . '개 / 비디오: ' . count($downloadedVideos) . '/' . count($videos) . '개');
 
         } catch (\Exception $e) {
             $this->error("  게시글 에러 (source_id={$sourceId}): " . $e->getMessage());
@@ -191,42 +213,93 @@ class EtolandScraper extends BaseScraper
             $src         = $img->attr('src')           ?? '';
             $dataSrc     = $img->attr('data-src')      ?? '';
 
-            // GnuBoard5 lazy-loading: data-file-src가 실제 이미지 파일명
+            // 우선순위: data-src > data-file-src > src
+            //
+            // data-file-src 단독 사용 시 구성하는 URL(/data/file/{board}/{token})은
+            // 실제 파일 경로(/data/files/{board}/{year}/{month}/{day}/minify/{token}.jpg)와
+            // 달라 693바이트 오류 응답을 반환하므로, full URL인 data-src를 먼저 사용한다.
+            if ($dataSrc && !str_starts_with($dataSrc, 'data:') && !str_contains($dataSrc, 'loading_img')) {
+                // 리사이즈 프록시 URL에서 원본 경로 복원
+                if (preg_match('/[?&]src=(.+)$/', $dataSrc, $m)) {
+                    $dataSrc = urldecode($m[1]);
+                }
+                $resolved = str_starts_with($dataSrc, 'http')
+                    ? $dataSrc
+                    : self::BASE_URL . '/' . ltrim($dataSrc, '/');
+
+                if (!isset($images[$dataSrc])) {
+                    $images[$dataSrc] = ['resolved' => $resolved, 'attr' => 'data-src'];
+                }
+                return;
+            }
+
+            // data-src 없을 때만 data-file-src 폴백 (토큰 → CDN URL 구성)
             if ($dataFileSrc && !str_starts_with($dataFileSrc, 'data:')) {
                 if (isset($images[$dataFileSrc])) return;
-                // CDN 경로: /data/file/[board_table]/[filename]
                 $cdnUrl = self::BASE_URL . '/data/file/' . $boardName . '/' . $dataFileSrc;
                 $images[$dataFileSrc] = ['resolved' => $cdnUrl, 'attr' => 'data-file-src'];
                 return;
             }
 
-            // 일반 data-src 또는 src (로딩 플레이스홀더 제외)
-            if ($dataSrc && !str_starts_with($dataSrc, 'data:')) {
-                $originalSrc = $dataSrc;
-                $attrName    = 'data-src';
-            } elseif ($src && !str_starts_with($src, 'data:') && !str_contains($src, 'loading_img')) {
-                $originalSrc = $src;
-                $attrName    = 'src';
-            } else {
-                return;
+            // 일반 src (로딩 플레이스홀더 제외)
+            if ($src && !str_starts_with($src, 'data:') && !str_contains($src, 'loading_img')) {
+                // 리사이즈 프록시 URL에서 원본 경로 복원
+                if (preg_match('/[?&]src=(.+)$/', $src, $m)) {
+                    $src = urldecode($m[1]);
+                }
+                if (isset($images[$src])) return;
+                $resolved = str_starts_with($src, 'http')
+                    ? $src
+                    : self::BASE_URL . '/' . ltrim($src, '/');
+                $images[$src] = ['resolved' => $resolved, 'attr' => 'src'];
             }
-
-            // 리사이즈 프록시 URL에서 원본 경로 복원
-            if (preg_match('/[?&]src=(.+)$/', $originalSrc, $m)) {
-                $originalSrc = urldecode($m[1]);
-                $attrName    = 'src';
-            }
-
-            if (isset($images[$originalSrc])) return;
-
-            $resolvedSrc = str_starts_with($originalSrc, 'http')
-                ? $originalSrc
-                : self::BASE_URL . '/' . ltrim($originalSrc, '/');
-
-            $images[$originalSrc] = ['resolved' => $resolvedSrc, 'attr' => $attrName];
         });
 
         return $images;
+    }
+
+    /**
+     * 다운로드 실패한 이미지 정리.
+     * loading_img placeholder src가 남아 있는 img 태그에서:
+     *  - data-src 있음 → src를 이토랜드 원본 URL로 교체, data-src/data-file-src 제거
+     *  - data-src 없음 → img 태그 자체 제거 (깨진 이미지 방지)
+     */
+    private function cleanupUndownloadedImages(string $content): string
+    {
+        return preg_replace_callback(
+            '/<img\b([^>]*)>/i',
+            function (array $m): string {
+                $attrs = $m[1];
+
+                // loading_img src가 없으면 건드리지 않음
+                if (!preg_match('/\bsrc=["\'][^"\']*loading_img[^"\']*["\']/i', $attrs)) {
+                    return $m[0];
+                }
+
+                // data-src에서 fallback URL 추출 (상대경로면 절대 URL로 보완)
+                $fallbackSrc = '';
+                if (preg_match('/\bdata-src=["\']([^"\']+)["\']/i', $attrs, $ds)) {
+                    $fallbackSrc = $ds[1];
+                    if (!str_starts_with($fallbackSrc, 'http')) {
+                        $fallbackSrc = self::BASE_URL . '/' . ltrim($fallbackSrc, '/');
+                    }
+                }
+
+                if (!$fallbackSrc) {
+                    // fallback 없음 → 태그 제거
+                    return '';
+                }
+
+                // loading_img src → 이토랜드 원본 URL로 교체
+                $attrs = preg_replace('/\bsrc=["\'][^"\']*loading_img[^"\']*["\']/', 'src="' . $fallbackSrc . '"', $attrs);
+                // data-src, data-file-src 제거 (처리 완료)
+                $attrs = preg_replace('/\s*\bdata-src=["\'][^"\']*["\']/', '', $attrs);
+                $attrs = preg_replace('/\s*\bdata-file-src=["\'][^"\']*["\']/', '', $attrs);
+
+                return '<img ' . trim(preg_replace('/\s+/', ' ', $attrs)) . '>';
+            },
+            $content
+        ) ?? $content;
     }
 
     /**
@@ -237,7 +310,7 @@ class EtolandScraper extends BaseScraper
     private function replaceEtolandImageUrls(string $content, array $images, array $downloaded): string
     {
         foreach ($downloaded as $originalSrc => $fileInfo) {
-            $serverUrl = $fileInfo['file_url'];
+            $serverUrl = $fileInfo['public_url'] ?? $fileInfo['file_url'];
             $attrName  = $images[$originalSrc]['attr'] ?? 'src';
 
             if ($attrName === 'data-file-src') {
@@ -270,11 +343,33 @@ class EtolandScraper extends BaseScraper
                     $content
                 );
             } elseif ($attrName === 'data-src') {
-                $content = str_replace(
-                    ['data-src="' . $originalSrc . '"', "data-src='" . $originalSrc . "'"],
-                    'src="' . $serverUrl . '"',
+                // data-src가 있는 img 태그는 src="/img/loading_img.jpg" 도 함께 있으므로
+                // regex callback으로 loading src 교체 + data-src/data-file-src 속성 제거
+                $escaped = preg_quote($originalSrc, '/');
+                $replaced = preg_replace_callback(
+                    '/<img\b([^>]*)\bdata-src=["\']' . $escaped . '["\']([^>]*)>/i',
+                    function (array $m) use ($serverUrl): string {
+                        $attrs = $m[1] . $m[2];
+                        // 로딩 플레이스홀더 src 교체
+                        if (preg_match('/\bsrc=["\'][^"\']*loading[^"\']*["\']/i', $attrs)) {
+                            $attrs = preg_replace(
+                                '/\bsrc=["\'][^"\']*loading[^"\']*["\']/i',
+                                'src="' . $serverUrl . '"',
+                                $attrs
+                            );
+                        } else {
+                            $attrs = 'src="' . $serverUrl . '" ' . $attrs;
+                        }
+                        // data-src, data-file-src 속성 제거
+                        $attrs = preg_replace('/\s*\bdata-src=["\'][^"\']*["\']/', '', $attrs);
+                        $attrs = preg_replace('/\s*\bdata-file-src=["\'][^"\']*["\']/', '', $attrs);
+                        return '<img ' . trim(preg_replace('/\s+/', ' ', $attrs)) . '>';
+                    },
                     $content
                 );
+                if ($replaced !== null) {
+                    $content = $replaced;
+                }
             } else {
                 $content = str_replace($originalSrc, $serverUrl, $content);
             }

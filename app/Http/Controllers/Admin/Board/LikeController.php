@@ -21,8 +21,7 @@ class LikeController extends Controller
         $query = DB::table('post_likes as pl')
             ->join('posts as p',  'pl.post_id', '=', 'p.post_id')
             ->join('users as u',  'pl.user_id', '=', 'u.id')
-            ->join('boards as b', 'p.post_category', '=', 'b.category')
-            ->whereNull('p.deleted_at');
+            ->join('boards as b', 'p.post_category', '=', 'b.category');
 
         if (!empty($params['type'])) {
             $query->where('pl.type', $params['type']);
@@ -69,7 +68,6 @@ class LikeController extends Controller
 
         $categories = DB::table('boards')
             ->where('board_status', 'ACTIVE')
-            ->whereNull('deleted_at')
             ->orderBy('board_order')
             ->pluck('board_name', 'category');
 

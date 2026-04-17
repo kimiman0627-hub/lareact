@@ -23,6 +23,19 @@ class HandleInertiaRequests extends Middleware
      *
      * @see https://inertiajs.com/asset-versioning
      */
+    /**
+     * 캐시 실패(Redis 장애, 디스크 풀 등) 시 예외를 삼키고 콜백 결과를 직접 반환.
+     * 캐시 없이 DB에서 직접 읽으므로 사이트는 정상 동작 유지됨.
+     */
+    private function safeCache(string $key, int $ttl, callable $callback): mixed
+    {
+        try {
+            return cache()->remember($key, $ttl, $callback);
+        } catch (\Throwable) {
+            return $callback();
+        }
+    }
+
     public function version(Request $request): ?string
     {
         return parent::version($request);
@@ -44,42 +57,38 @@ class HandleInertiaRequests extends Middleware
             ],
 
             // 관리자로 인증된 경우에만 config/admin.php의 menu를 전달
-            'adminMenu' => $request->user('admin') ? config('admin.menu') : null,
+            'adminMenu' => $request->user('admin') ? config('admin.menu') : [],
 
             // GNB 게시판 목록 (모든 페이지 공유)
             'gnbBoards' => DB::table('boards')
                 ->where('board_status', 'ACTIVE')
-                ->whereNull('deleted_at')
                 ->orderBy('board_order')
                 ->orderBy('board_id')
                 ->get(['board_id', 'board_name', 'category'])
                 ->toArray(),
 
-            // 사이드바 배너 (캐시 5분)
-            'sideBanners1' => cache()->remember('banners.side1', 300, fn () =>
+            // 사이드바 배너 (캐시 5분, Redis 장애 시 DB 직접 조회로 폴백)
+            'sideBanners1' => $this->safeCache('banners.side1', 300, fn () =>
                 BannerModel::getActiveByPosition('SIDE1')
             ),
-            'sideBanners2' => cache()->remember('banners.side2', 300, fn () =>
+            'sideBanners2' => $this->safeCache('banners.side2', 300, fn () =>
                 BannerModel::getActiveByPosition('SIDE2')
             ),
 
-            // 사이드바 현황 통계 (캐시 적용)
-            // today_posts / total_members: 3분 캐시 (자주 바뀌지 않음)
-            // online_users: 1분 캐시 (세션 기반 실시간성 유지)
+            // 사이드바 현황 통계 (캐시, Redis 장애 시 DB 직접 조회로 폴백)
             'siteStats' => [
-                'today_posts'   => cache()->remember('stats.today_posts', 180, fn () =>
+                'today_posts'   => $this->safeCache('stats.today_posts', 180, fn () =>
                     DB::table('posts')
                         ->where('post_status', 'ACTIVE')
-                        ->whereNull('deleted_at')
                         ->whereDate('created_at', today())
                         ->count()
                 ),
-                'total_members' => cache()->remember('stats.total_members', 180, fn () =>
+                'total_members' => $this->safeCache('stats.total_members', 180, fn () =>
                     DB::table('users')
                         ->whereNot('user_role', 'TEST')
                         ->count()
                 ),
-                'online_users'  => cache()->remember('stats.online_users', 60, fn () =>
+                'online_users'  => $this->safeCache('stats.online_users', 60, fn () =>
                     DB::table('sessions')
                         ->where('last_activity', '>=', now()->subMinutes(5)->timestamp)
                         ->count()

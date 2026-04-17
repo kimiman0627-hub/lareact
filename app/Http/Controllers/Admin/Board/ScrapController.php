@@ -26,8 +26,7 @@ class ScrapController extends Controller
         $query = DB::table('scraps as s')
             ->join('posts as p',  's.post_id',       '=', 'p.post_id')
             ->join('users as u',  's.user_id',        '=', 'u.id')
-            ->join('boards as b', 'p.post_category',  '=', 'b.category')
-            ->whereNull('p.deleted_at');
+            ->join('boards as b', 'p.post_category',  '=', 'b.category');
 
         if (!empty($params['keyword'])) {
             $kw = $params['keyword'];
@@ -69,7 +68,6 @@ class ScrapController extends Controller
 
         $categories = DB::table('boards')
             ->where('board_status', 'ACTIVE')
-            ->whereNull('deleted_at')
             ->orderBy('board_order')
             ->pluck('board_name', 'category');
 

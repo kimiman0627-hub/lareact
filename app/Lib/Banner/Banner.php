@@ -51,8 +51,7 @@ class Banner
         try {
             return DB::select("SELECT B.*
                 FROM banners AS B
-                WHERE B.deleted_at IS NULL
-                {$this->buildWhereAppend()}
+                {$this->buildWhere()}
                 {$this->buildOrderBy()}
                 {$this->buildLimit()}", $this->bindings);
         } catch (\Throwable $e) {
@@ -66,8 +65,7 @@ class Banner
         try {
             return DB::selectOne("SELECT COUNT(*) AS total
                 FROM banners AS B
-                WHERE B.deleted_at IS NULL
-                {$this->buildWhereAppend()}", $this->bindings)->total ?? 0;
+                {$this->buildWhere()}", $this->bindings)->total ?? 0;
         } catch (\Throwable $e) {
             $this->setResult(500, $e->getMessage());
             return false;
@@ -107,9 +105,5 @@ class Banner
         return (bool) $banner->delete();
     }
 
-    // WHERE 절이 이미 deleted_at 조건이 있으므로 AND로 추가 조건만 붙임
-    private function buildWhereAppend(): string
-    {
-        return empty($this->whereConditions) ? '' : 'AND ' . implode(' AND ', $this->whereConditions);
-    }
+
 }

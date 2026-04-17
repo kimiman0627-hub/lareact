@@ -14,6 +14,7 @@ return [
         'ETOLAND'  => '이토랜드',
         'THEQOO'   => '더쿠',
         'FOMOS'    => '포모스',
+        'BOBAEDREAM'   => '보배드림',
     ],
 
     'post_types' => [

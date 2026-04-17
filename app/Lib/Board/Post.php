@@ -85,16 +85,34 @@ class Post
     public function getList()
     {
         try {
-            return DB::select("SELECT P.*,
+            // GROUP BY 제거 → LATERAL JOIN 방식으로 변경.
+            // 이전: LEFT JOIN post_banners + GROUP BY → LIMIT 전에 전체 행 집계 (느림)
+            // 이후: LATERAL 서브쿼리 → LIMIT 이후 20행에만 실행 (빠름)
+            // content·post_data 제외: 목록에 불필요한 대용량 컬럼을 빼 네트워크·메모리 절감.
+            // 수정 시 content는 /admin/posts/{id} 개별 조회로 가져옴.
+            return DB::select("SELECT
+                    P.post_id, P.source, P.source_id, P.user_id,
+                    P.post_status, P.post_type, P.post_category,
+                    P.title, P.hits, P.comment_count, P.like_count, P.dislike_count,
+                    P.is_notice, P.created_at, P.updated_at,
                     U.email, U.name,
-                    STRING_AGG(PB.banner_id::text, ',') AS banner_ids,
-                    EXISTS (SELECT 1 FROM files WHERE file_kind = 'POST' AND ref_id = P.post_id) AS has_image,
-                    (SELECT COUNT(*) FROM scraps WHERE post_id = P.post_id) AS scrap_count
+                    COALESCE(pb.banner_ids, '') AS banner_ids,
+                    COALESCE(fi.has_image, false) AS has_image,
+                    COALESCE(sc.scrap_count, 0) AS scrap_count
                 FROM posts AS P
                 INNER JOIN users AS U ON P.user_id = U.id
-                LEFT JOIN post_banners AS PB ON P.post_id = PB.post_id
+                LEFT JOIN LATERAL (
+                    SELECT STRING_AGG(banner_id::text, ',') AS banner_ids
+                    FROM post_banners WHERE post_id = P.post_id
+                ) pb ON true
+                LEFT JOIN LATERAL (
+                    SELECT true AS has_image
+                    FROM files WHERE file_kind = 'POST' AND ref_id = P.post_id LIMIT 1
+                ) fi ON true
+                LEFT JOIN LATERAL (
+                    SELECT COUNT(*) AS scrap_count FROM scraps WHERE post_id = P.post_id
+                ) sc ON true
                 {$this->buildWhere()}
-                GROUP BY P.post_id, U.id, U.email, U.name
                 {$this->buildOrderBy()}
                 {$this->buildLimit()}", $this->bindings);
         } catch (\Throwable $e) {

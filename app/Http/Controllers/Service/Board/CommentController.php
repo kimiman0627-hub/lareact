@@ -20,7 +20,6 @@ class CommentController extends Controller
         $post = DB::table('posts')
             ->where('post_id', $postId)
             ->where('post_status', 'ACTIVE')
-            ->whereNull('deleted_at')
             ->first();
 
         if (!$post) abort(404);

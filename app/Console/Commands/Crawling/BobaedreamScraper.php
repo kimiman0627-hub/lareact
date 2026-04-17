@@ -141,6 +141,7 @@ class BobaedreamScraper extends BaseScraper
                 self::BASE_URL
             );
             $images = $this->collectImages($contentNode, self::BASE_URL);
+            $videos = $this->collectVideos($contentNode, self::BASE_URL);
 
             // ── 조회수 ─────────────────────────────────────────────────
             $hits = $this->extractHits($c, [
@@ -176,20 +177,31 @@ class BobaedreamScraper extends BaseScraper
 
             // ── 이미지 다운로드 (트랜잭션 밖) ─────────────────────────
             $downloaded = $this->downloadImages($client, $images, $post->post_id);
+            $currentContent = $contentHtml;
 
             if (!empty($downloaded)) {
                 $this->saveFileRecords($post->post_id, $downloaded);
-                $finalContent = $this->replaceImageUrls($contentHtml, $images, $downloaded);
-                if ($finalContent !== $contentHtml) {
-                    $post->update(['content' => $finalContent]);
-                }
+                $currentContent = $this->replaceImageUrls($currentContent, $images, $downloaded);
+            }
+
+            // ── 비디오 다운로드 (트랜잭션 밖) ─────────────────────────
+            $downloadedVideos = $this->downloadVideos($client, $videos, $post->post_id);
+
+            if (!empty($downloadedVideos)) {
+                $this->saveFileRecords($post->post_id, $downloadedVideos);
+                $currentContent = $this->replaceVideoUrls($currentContent, $videos, $downloadedVideos);
+            }
+
+            if ($currentContent !== $contentHtml) {
+                $post->update(['content' => $currentContent]);
             }
 
             $this->incSaved();
             $this->info(
                 "  저장: [{$sourceId}] {$title}" .
                 " / 작성자: {$author}" .
-                " / 이미지: " . count($downloaded) . '/' . count($images) . '개'
+                " / 이미지: " . count($downloaded) . '/' . count($images) . '개' .
+                " / 비디오: " . count($downloadedVideos) . '/' . count($videos) . '개'
             );
 
         } catch (\Exception $e) {

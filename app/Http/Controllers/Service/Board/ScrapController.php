@@ -16,7 +16,6 @@ class ScrapController extends Controller
         $exists = DB::table('posts')
             ->where('post_id', $id)
             ->where('post_status', 'ACTIVE')
-            ->whereNull('deleted_at')
             ->exists();
 
         if (!$exists) {

@@ -54,8 +54,7 @@ class MypageController extends Controller
                 ->join('boards as b', 'p.post_category', '=', 'b.category')
                 ->where('p.user_id', $userId)
                 ->where('p.post_status', 'ACTIVE')
-                ->whereNull('p.source')          // 본인이 직접 작성한 글만
-                ->whereNull('p.deleted_at');
+                ->whereNull('p.source');          // 본인이 직접 작성한 글만
 
             $total = (clone $base)->count();
 
@@ -77,8 +76,6 @@ class MypageController extends Controller
                 ->join('posts as p', 'c.post_id', '=', 'p.post_id')
                 ->join('boards as b', 'p.post_category', '=', 'b.category')
                 ->where('c.user_id', $userId)
-                ->whereNull('c.deleted_at')
-                ->whereNull('p.deleted_at')
                 ->where('p.post_status', 'ACTIVE');
 
             $total = (clone $base)->count();
@@ -119,8 +116,7 @@ class MypageController extends Controller
                 ->join('users as u', 'p.user_id', '=', 'u.id')
                 ->join('boards as b', 'p.post_category', '=', 'b.category')
                 ->where('s.user_id', $userId)
-                ->where('p.post_status', 'ACTIVE')
-                ->whereNull('p.deleted_at');
+                ->where('p.post_status', 'ACTIVE');
 
             $total = (clone $base)->count();
 

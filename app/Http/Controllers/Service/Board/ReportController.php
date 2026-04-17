@@ -20,7 +20,6 @@ class ReportController extends Controller
         $exists = DB::table('posts')
             ->where('post_id', $postId)
             ->where('post_status', 'ACTIVE')
-            ->whereNull('deleted_at')
             ->exists();
 
         if (!$exists) {

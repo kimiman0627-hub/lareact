@@ -25,6 +25,7 @@ class FileController extends Controller
         $storedName   = basename($storedPath);
 
         $record = FileModel::create([
+            'storage'       => 'LOCAL',
             'file_kind'     => $request->file_kind,
             'ref_id'        => $request->ref_id ?? null,
             'original_name' => $file->getClientOriginalName(),

@@ -40,6 +40,7 @@ Route::middleware(['auth:admin'])->group(function () {
     Route::resource('users', UserController::class);
 
     Route::get('posts/search', [PostController::class, 'search'])->name('posts.search');
+    Route::delete('posts/bulk', [PostController::class, 'destroyBulk'])->name('posts.bulk-destroy');
     Route::resource('posts', PostController::class);
     Route::resource('boards', BoardController::class);
 

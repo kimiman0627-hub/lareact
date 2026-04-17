@@ -24,13 +24,13 @@ export default defineConfig(({ mode }) => {
             },
         },
         plugins: [
-            tailwindcss(), 
+            tailwindcss(),
             laravel({
                 input: [
                     'resources/css/app.css',
                     'resources/css/admin.css',
                     'resources/js/service.jsx',
-                    'resources/js/admin.jsx'
+                    'resources/js/admin.jsx',
                 ],
                 refresh: true,
             }),

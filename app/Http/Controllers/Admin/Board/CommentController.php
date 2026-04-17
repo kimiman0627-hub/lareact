@@ -22,8 +22,7 @@ class CommentController extends Controller
 
         $query = DB::table('comments as c')
             ->join('users as u', 'c.user_id', '=', 'u.id')
-            ->join('posts as p', 'c.post_id', '=', 'p.post_id')
-            ->whereNull('c.deleted_at');
+            ->join('posts as p', 'c.post_id', '=', 'p.post_id');
 
         if (!empty($params['keyword'])) {
             $query->where('c.content', 'ilike', '%' . $params['keyword'] . '%');

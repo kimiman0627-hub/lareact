@@ -13,7 +13,18 @@ use App\Http\Controllers\Service\Inquiry\InquiryController;
 use App\Http\Controllers\Service\Board\ReportController;
 use App\Http\Controllers\Service\Board\ScrapController;
 use App\Http\Controllers\Service\SitemapController;
+use App\Http\Controllers\Service\File\FileProxyController;
+use App\Http\Controllers\Service\File\FileController;
 use App\Http\Middleware\HandleInertiaRequests;
+
+// NCP 비공개 버킷 파일 프록시
+// - HandleInertiaRequests 제외: JSON 응답이 아닌 파일 스트림
+// - throttle:file-proxy: IP당 분당 120회 제한
+Route::withoutMiddleware([HandleInertiaRequests::class])
+    ->middleware('throttle:file-proxy')
+    ->get('/file/{path}', [FileProxyController::class, 'serve'])
+    ->where('path', '.+')
+    ->name('file.proxy');
 
 // 사이트맵 (Inertia 미들웨어 제외 — <script/> 주입 방지)
 Route::withoutMiddleware([HandleInertiaRequests::class])->group(function () {
@@ -33,11 +44,17 @@ Route::get('/popular', [PopularController::class, 'index'])->name('popular');
 
 // 게시판
 Route::get('/board/{category}', [BoardController::class, 'index'])->name('board.index');
+Route::get('/post/write', [BoardController::class, 'create'])->name('post.create')->middleware('auth');
 Route::get('/post/{id}', [BoardController::class, 'show'])->name('post.show');
 
 // 로그인 필요
 Route::middleware('auth')->group(function () {
+    // 게시글 작성/파일업로드
+    Route::post('/post/write', [BoardController::class, 'store'])->name('post.store');
+    Route::post('/files/upload', [FileController::class, 'upload'])->name('file.upload');
+
     // 댓글
+    Route::delete('/post/{id}', [BoardController::class, 'destroy'])->name('post.destroy');
     Route::post('/post/{id}/comments', [CommentController::class, 'store'])->name('comment.store');
     Route::delete('/comment/{id}', [CommentController::class, 'destroy'])->name('comment.destroy');
     Route::post('/post/{id}/like', [LikeController::class, 'toggle'])->name('post.like');

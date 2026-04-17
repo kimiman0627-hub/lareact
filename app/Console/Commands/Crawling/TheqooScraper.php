@@ -30,14 +30,14 @@ class TheqooScraper extends BaseScraper
         'sports' => 'sports',
         'kstar'  => 'enter',
         'lolt1'   => 'game',
-        'kdolboys'  => 'enter',
-        'kdolgirls' => 'enter',
+        // 'kdolboys'  => 'enter',
+        // 'kdolgirls' => 'enter',
     ];
 
     // 더쿠 카테고리 → 우리 board category
     private const CATEGORY_MAP = [
         '영화/드라마/방송' => 'enter',
-        '케이돌'          => 'enter',
+        // '케이돌'          => 'enter',
     ];
 
     public function handle(): void
@@ -144,6 +144,7 @@ class TheqooScraper extends BaseScraper
             $contentHtml = $this->fixVideoUrls($this->cleanContent($contentNode->html()), self::BASE_URL);
 
             $images = $this->collectImages($contentNode, self::BASE_URL);
+            $videos = $this->collectVideos($contentNode, self::BASE_URL);
 
             // 조회수: 더쿠는 조회수가 JS 렌더링이므로 스크랩수/추천수를 대체값으로 사용
             $hits = $this->extractHits($c, ['#scrapped_count', '#voted_count', 'span.view_count', '.view_count']);
@@ -172,17 +173,41 @@ class TheqooScraper extends BaseScraper
 
             // 이미지 다운로드 (트랜잭션 밖)
             $downloaded = $this->downloadImages($client, $images, $post->post_id);
+            $currentContent = $contentHtml;
+
+            // 이미지가 있었으나 하나도 저장 못한 경우 → 게시물 삭제
+            if (!empty($images) && empty($downloaded)) {
+                $this->warn("  이미지 다운로드 전체 실패 (source_id={$sourceId}), 게시물 삭제");
+                $this->deletePost($post->post_id);
+                return;
+            }
 
             if (!empty($downloaded)) {
                 $this->saveFileRecords($post->post_id, $downloaded);
-                $finalContent = $this->replaceImageUrls($contentHtml, $images, $downloaded);
-                if ($finalContent !== $contentHtml) {
-                    $post->update(['content' => $finalContent]);
-                }
+                $currentContent = $this->replaceImageUrls($currentContent, $images, $downloaded);
+            }
+
+            // 비디오 다운로드 (트랜잭션 밖)
+            $downloadedVideos = $this->downloadVideos($client, $videos, $post->post_id);
+
+            // 비디오가 있었으나 하나도 저장 못한 경우 → 게시물 삭제
+            if (!empty($videos) && empty($downloadedVideos)) {
+                $this->warn("  비디오 다운로드 전체 실패 (source_id={$sourceId}), 게시물 삭제");
+                $this->deletePost($post->post_id);
+                return;
+            }
+
+            if (!empty($downloadedVideos)) {
+                $this->saveFileRecords($post->post_id, $downloadedVideos);
+                $currentContent = $this->replaceVideoUrls($currentContent, $videos, $downloadedVideos);
+            }
+
+            if ($currentContent !== $contentHtml) {
+                $post->update(['content' => $currentContent]);
             }
 
             $this->incSaved();
-            $this->info("  저장: [{$sourceId}] {$title} / 작성자: {$author} / 카테고리: {$category} / 이미지: " . count($downloaded) . '/' . count($images) . '개');
+            $this->info("  저장: [{$sourceId}] {$title} / 작성자: {$author} / 카테고리: {$category} / 이미지: " . count($downloaded) . '/' . count($images) . '개 / 비디오: ' . count($downloadedVideos) . '/' . count($videos) . '개');
 
         } catch (\Exception $e) {
             $this->error("  게시글 에러 (source_id={$sourceId}): " . $e->getMessage());

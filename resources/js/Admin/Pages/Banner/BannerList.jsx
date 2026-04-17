@@ -83,7 +83,7 @@ export default function BannerList({
 
     return (
         <AdminLayout user={auth?.user}>
-            <div className="p-6 max-w-7xl mx-auto">
+            <div className="space-y-4">
                 <BannerCreateModal
                     isOpen={isBannerModalOpen}
                     onClose={() => setIsBannerModalOpen(false)}

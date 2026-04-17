@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Service\Board;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use App\Lib\Board\PostFileCleaner;
 use Inertia\Inertia;
 
 class BoardController extends Controller
@@ -17,7 +20,6 @@ class BoardController extends Controller
         $board = DB::table('boards')
             ->where('category', $category)
             ->where('board_status', 'ACTIVE')
-            ->whereNull('deleted_at')
             ->first();
 
         if (!$board) {
@@ -31,8 +33,7 @@ class BoardController extends Controller
         $baseQuery = DB::table('posts as p')
             ->join('users as u', 'p.user_id', '=', 'u.id')
             ->where('p.post_category', $category)
-            ->where('p.post_status', 'ACTIVE')
-            ->whereNull('p.deleted_at');
+            ->where('p.post_status', 'ACTIVE');
 
         $total = (clone $baseQuery)->count();
 
@@ -79,9 +80,8 @@ class BoardController extends Controller
             ->join('boards as b', 'p.post_category', '=', 'b.category')
             ->where('p.post_id', $id)
             ->where('p.post_status', 'ACTIVE')
-            ->whereNull('p.deleted_at')
             ->first([
-                'p.post_id', 'p.title', 'p.content', 'p.is_notice',
+                'p.post_id', 'p.user_id', 'p.title', 'p.content', 'p.is_notice',
                 'p.hits', 'p.comment_count', 'p.like_count', 'p.dislike_count',
                 'p.created_at', 'p.post_category', 'p.source',
                 'u.name as author',
@@ -102,7 +102,6 @@ class BoardController extends Controller
         $comments = DB::table('comments as c')
             ->join('users as u', 'c.user_id', '=', 'u.id')
             ->where('c.post_id', $id)
-            ->whereNull('c.deleted_at')
             ->orderBy('c.created_at')
             ->get(['c.comment_id', 'c.parent_id', 'c.depth', 'c.content', 'c.created_at', 'c.user_id', 'u.name as author']);
 
@@ -124,8 +123,7 @@ class BoardController extends Controller
         $sibling = DB::table('posts')
             ->where('post_category', $post->post_category)
             ->where('post_status', 'ACTIVE')
-            ->where('is_notice', false)
-            ->whereNull('deleted_at');
+            ->where('is_notice', false);
 
         $prevPost = (clone $sibling)
             ->where('post_id', '<', $id)
@@ -148,8 +146,15 @@ class BoardController extends Controller
             ->orderBy('file_id')
             ->value('file_url');
 
+        // 본인 게시물 또는 관리자 유형 회원이면 삭제 버튼 노출
+        $isOwner = Auth::check() && (
+            Auth::id() === (int) $post->user_id ||
+            Auth::user()->user_role === 'ADMIN'
+        );
+
         return Inertia::render('Board/PostDetail', [
             'post'         => $post,
+            'isOwner'      => $isOwner,
             'comments'     => $comments,
             'maxDepth'     => $maxDepth,
             'boardOptions' => $boardOptions,
@@ -168,5 +173,99 @@ class BoardController extends Controller
                 'author'      => $post->author,
             ],
         ]);
+    }
+
+    /**
+     * 게시글 작성 폼.
+     */
+    public function create(Request $request)
+    {
+        Inertia::setRootView('app');
+
+        $boards = DB::table('boards')
+            ->where('board_status', 'ACTIVE')
+            ->orderBy('board_order')
+            ->orderBy('board_id')
+            ->get(['category', 'board_name', 'options']);
+
+        // 작성 권한이 ADMIN 전용인 게시판은 목록에서 제외
+        $writableBoards = $boards->filter(function ($board) {
+            $options = is_string($board->options) ? json_decode($board->options, true) : [];
+            return ($options['write_permission'] ?? 'MEMBER') !== 'ADMIN';
+        })->values();
+
+        return Inertia::render('Board/PostWrite', [
+            'boards'   => $writableBoards,
+            'category' => $request->query('category'),
+        ]);
+    }
+
+    /**
+     * 게시글 저장.
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'post_category' => [
+                'required', 'string',
+                Rule::exists('boards', 'category')
+                    ->where('board_status', 'ACTIVE'),
+            ],
+            'title'               => 'required|string|max:255',
+            'content'             => 'required|string',
+            'uploaded_file_ids'   => 'nullable|array',
+            'uploaded_file_ids.*' => 'integer',
+        ]);
+
+        // 해당 게시판 작성 권한 확인
+        $board   = DB::table('boards')->where('category', $validated['post_category'])->first();
+        $options = is_string($board->options) ? json_decode($board->options, true) : [];
+        if (($options['write_permission'] ?? 'MEMBER') === 'ADMIN') {
+            abort(403, '관리자만 작성 가능한 게시판입니다.');
+        }
+
+        $postId = DB::table('posts')->insertGetId([
+            'user_id'       => Auth::id(),
+            'post_status'   => 'ACTIVE',
+            'post_type'     => 'NORMAL',
+            'post_category' => $validated['post_category'],
+            'title'         => $validated['title'],
+            'content'       => $validated['content'],
+            'is_notice'     => false,
+            'hits'          => 0,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ], 'post_id');
+
+        PostFileCleaner::syncContentFiles($postId, $validated['content'], $validated['uploaded_file_ids'] ?? []);
+
+        return redirect()->route('post.show', $postId)->with('message', '게시글이 등록되었습니다.');
+    }
+
+    /**
+     * 사용자 게시물 삭제 — 본인 게시물만 가능.
+     */
+    public function destroy(int $id)
+    {
+        $post = DB::table('posts')
+            ->where('post_id', $id)
+            ->first(['post_id', 'user_id', 'post_category']);
+
+        if (!$post) {
+            abort(404);
+        }
+
+        $isAdmin = Auth::check() && Auth::user()->user_role === 'ADMIN';
+        if (!Auth::check() || (Auth::id() !== (int) $post->user_id && !$isAdmin)) {
+            abort(403);
+        }
+
+        PostFileCleaner::deleteByPost($id);
+
+        DB::table('posts')->where('post_id', $id)->delete();
+
+        return redirect()
+            ->route('board.index', ['category' => $post->post_category])
+            ->with('message', '게시글이 삭제되었습니다.');
     }
 }

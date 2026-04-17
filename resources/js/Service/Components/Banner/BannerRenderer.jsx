@@ -14,9 +14,13 @@ function ScriptBanner({ banner, className }) {
     const srcdoc = `<!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { overflow: hidden; display: flex; justify-content: center; align-items: flex-start; }
+html, body { width: 100%; overflow: hidden; }
+/* AdSense ins 요소가 block으로 렌더링되도록 보장 */
+ins.adsbygoogle { display: block !important; }
 </style>
 </head>
 <body>
@@ -24,12 +28,15 @@ ${banner.content ?? ""}
 <script>
 (function() {
   function report() {
-    var h = document.body.scrollHeight;
+    var h = Math.max(document.body.scrollHeight, document.body.offsetHeight,
+                     document.documentElement.scrollHeight);
     if (h > 0) parent.postMessage({ type: 'bannerResize', id: ${banner.banner_id}, height: h }, '*');
   }
   window.addEventListener('load', report);
+  /* AdSense는 비동기 렌더링이므로 여러 시점에 높이 확인 */
   setTimeout(report, 500);
   setTimeout(report, 1500);
+  setTimeout(report, 3000);
 })();
 <\/script>
 </body>
@@ -51,7 +58,7 @@ ${banner.content ?? ""}
             srcDoc={srcdoc}
             className={`w-full block ${className ?? ""}`}
             style={{ height: `${height}px`, border: "none" }}
-            sandbox="allow-scripts"
+            sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
             title={banner.title || "advertisement"}
         />
     );

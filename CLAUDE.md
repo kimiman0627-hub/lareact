@@ -157,7 +157,18 @@ php artisan route:clear
 # 크롤링
 php artisan crawl:dogdrip   # 개드립(dogdrip.net) 크롤링
 php artisan crawl:dcinside  # DCInside 크롤링
+
+# 파일 마이그레이션
+php artisan migrate:files-to-ncp                          # 전체 소스 로컬 파일 → NCP 이전
+php artisan migrate:files-to-ncp --source=DOGDRIP         # 특정 소스만 이전
+php artisan migrate:files-to-ncp --source=DOGDRIP --dry-run  # 실제 변경 없이 결과 미리보기
 php artisan crawl:etoland   # 이토랜드(etoland.co.kr) 크롤링
+php artisan repair:etoland-images           # 이토랜드 이미지 실패 게시물 복구 (실패 시 삭제)
+php artisan repair:etoland-images --dry-run # 복구 대상 확인만
+php artisan repair:etoland-images --post-id=26588 # 특정 게시물만
+php artisan repair:etoland-videos           # 이토랜드 동영상 문제 게시물 복구 (lazy-hidden 제거 / 상대URL 재다운로드)
+php artisan repair:etoland-videos --dry-run # 복구 대상 확인만
+php artisan repair:etoland-videos --download-external  # 이토랜드 외부 URL 동영상도 재다운로드 (실패 시 삭제)
 ```
 
 ---

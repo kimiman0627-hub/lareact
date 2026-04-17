@@ -29,7 +29,6 @@ class SearchController extends Controller
             ->join('users as u', 'p.user_id', '=', 'u.id')
             ->join('boards as b', 'p.post_category', '=', 'b.category')
             ->where('p.post_status', 'ACTIVE')
-            ->whereNull('p.deleted_at')
             ->where(function ($q2) use ($q) {
                 $q2->where('p.title', 'ilike', "%{$q}%")
                    ->orWhere('p.content', 'ilike', "%{$q}%");

@@ -1,11 +1,12 @@
 import React from "react";
-import { Head, Link, router } from "@inertiajs/react";
+import { Head, Link, router, usePage } from "@inertiajs/react";
 import ServiceLayout from "@/Service/Layouts/ServiceLayout";
 import { timeAgo, fmtHits } from "@/Service/Components/Board/BoardCard";
 import Pagination from "@/Service/Components/Common/Pagination";
 
 
 export default function BoardList({ board, list, seo = {} }) {
+    const { auth } = usePage().props;
     const posts     = list.data ?? [];
     const meta      = list.meta ?? list;
     const lastPage  = meta.last_page ?? 1;
@@ -37,7 +38,17 @@ export default function BoardList({ board, list, seo = {} }) {
                 {/* 게시판 타이틀 */}
                 <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
                     <h1 className="text-base font-bold text-slate-800">{board.board_name}</h1>
-                    <span className="text-xs text-slate-400">전체 {meta.total ?? 0}건</span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-400">전체 {meta.total ?? 0}건</span>
+                        {auth?.user && (
+                            <Link
+                                href={`/post/write?category=${board.category}`}
+                                className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded px-2.5 py-1 transition"
+                            >
+                                글쓰기
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 {/* 게시글 목록 */}

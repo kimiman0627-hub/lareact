@@ -30,7 +30,7 @@ export default function ScrapList({ list, total, params, categories }) {
 
     return (
         <AdminLayout user={auth?.admin}>
-            <div className="p-6 max-w-7xl mx-auto">
+            <div className="space-y-4">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-gray-800">
                         스크랩 내역

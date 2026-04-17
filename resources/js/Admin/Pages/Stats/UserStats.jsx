@@ -107,7 +107,7 @@ export default function UserStats({ series = [], summary = {}, from, to }) {
 
     return (
         <AdminLayout user={auth?.admin}>
-            <div className="p-6 max-w-7xl mx-auto space-y-6">
+            <div className="space-y-6">
 
                 {/* 헤더 */}
                 <h1 className="text-2xl font-bold text-gray-800">회원 통계</h1>

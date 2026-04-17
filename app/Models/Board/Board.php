@@ -18,7 +18,6 @@ class Board extends Model
     {
         $boards = DB::table('boards')
             ->where('board_status', 'ACTIVE')
-            ->whereNull('deleted_at')
             // show_on_main 이 명시적으로 false인 경우만 제외 (미설정 = true로 간주)
             ->whereRaw("COALESCE((options->>'show_on_main')::boolean, true) = true")
             ->orderBy('board_order')
@@ -30,7 +29,6 @@ class Board extends Model
                 ->join('users as u', 'p.user_id', '=', 'u.id')
                 ->where('p.post_category', $board->category)
                 ->where('p.post_status', 'ACTIVE')
-                ->whereNull('p.deleted_at')
                 ->orderByDesc('p.is_notice')
                 ->orderByDesc('p.created_at')
                 ->limit(5)

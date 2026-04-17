@@ -6,6 +6,10 @@ use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\RateLimiter;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
@@ -40,5 +44,23 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
-    })->create();
+        $exceptions->respond(function (Response $response, \Throwable $e, Request $request) {
+            $status = $response->getStatusCode();
+
+            if (!in_array($status, [404, 403, 500, 503]) || $request->expectsJson()) {
+                return $response;
+            }
+
+            return Inertia::render('Errors/ErrorPage', ['status' => $status])
+                ->toResponse($request)
+                ->setStatusCode($status);
+        });
+    })
+    ->booted(function () {
+        // 파일 프록시 Rate Limiter:
+        // IP당 분당 120회 (이미지 많은 페이지 감안) — 초과 시 429 응답
+        RateLimiter::for('file-proxy', function (Request $request) {
+            return Limit::perMinute(120)->by($request->ip());
+        });
+    })
+    ->create();

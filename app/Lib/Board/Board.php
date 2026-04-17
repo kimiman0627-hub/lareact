@@ -21,8 +21,6 @@ class Board
 
     public function genQuery(): void
     {
-        $this->whereRaw('B.deleted_at IS NULL');
-
         if (!empty($this->params['keyword'] ?? null)) {
             $this->whereLike('B.board_name', $this->params['keyword']);
         }

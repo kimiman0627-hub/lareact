@@ -65,8 +65,8 @@ class UserController extends Controller
         $user = User::findOrFail($id);
 
         $stats = [
-            'post_count'     => DB::table('posts')->where('user_id', $id)->whereNull('deleted_at')->count(),
-            'comment_count'  => DB::table('comments')->where('user_id', $id)->whereNull('deleted_at')->count(),
+            'post_count'     => DB::table('posts')->where('user_id', $id)->count(),
+            'comment_count'  => DB::table('comments')->where('user_id', $id)->count(),
             'scrap_count'    => DB::table('scraps')->where('user_id', $id)->count(),
             'like_count'     => DB::table('post_likes')->where('user_id', $id)->count(),
             'inquiry_count'  => DB::table('inquiries')->where('user_id', $id)->count(),
@@ -97,11 +97,10 @@ class UserController extends Controller
         switch ($type) {
             case 'posts':
                 $total = DB::table('posts')
-                    ->where('user_id', $id)->whereNull('deleted_at')->count();
+                    ->where('user_id', $id)->count();
                 $items = DB::table('posts as p')
                     ->leftJoin('boards as b', 'p.post_category', '=', 'b.category')
                     ->where('p.user_id', $id)
-                    ->whereNull('p.deleted_at')
                     ->orderByDesc('p.created_at')
                     ->offset($offset)->limit($perPage)
                     ->get(['p.post_id', 'p.title', 'p.post_status', 'p.hits',
@@ -110,11 +109,10 @@ class UserController extends Controller
 
             case 'comments':
                 $total = DB::table('comments')
-                    ->where('user_id', $id)->whereNull('deleted_at')->count();
+                    ->where('user_id', $id)->count();
                 $items = DB::table('comments as c')
                     ->leftJoin('posts as p', 'c.post_id', '=', 'p.post_id')
                     ->where('c.user_id', $id)
-                    ->whereNull('c.deleted_at')
                     ->orderByDesc('c.created_at')
                     ->offset($offset)->limit($perPage)
                     ->get(['c.comment_id', 'c.content', 'c.created_at',

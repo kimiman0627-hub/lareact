@@ -7,10 +7,10 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Board\Post;
 use App\Lib\Board\Post as PostLib;
+use App\Lib\Board\PostFileCleaner;
 use App\Lib\Banner\PostBanner as PostBannerLib;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -46,10 +46,10 @@ class PostController extends Controller
         );
 
         // 배너 선택용: 활성화된 배너 전체 목록
-        $banners = DB::select("SELECT banner_id, title, banner_position FROM banners WHERE banner_status = 'ACTIVE' AND deleted_at IS NULL ORDER BY sort_order ASC, banner_id ASC");
+        $banners = DB::select("SELECT banner_id, title, banner_position FROM banners WHERE banner_status = 'ACTIVE' ORDER BY sort_order ASC, banner_id ASC");
 
         // 게시판 설정에서 카테고리 목록 조회 (category => board_name)
-        $boardRows = DB::select("SELECT category, board_name FROM boards WHERE board_status = 'ACTIVE' AND deleted_at IS NULL ORDER BY board_order ASC, board_id ASC");
+        $boardRows = DB::select("SELECT category, board_name FROM boards WHERE board_status = 'ACTIVE' ORDER BY board_order ASC, board_id ASC");
         $postCategories = collect($boardRows)->pluck('board_name', 'category')->all();
 
         return Inertia::render('Board/PostList', [
@@ -96,7 +96,6 @@ class PostController extends Controller
                 'post_category' => [
                     'required', 'string',
                     Rule::exists('boards', 'category')
-                        ->whereNull('deleted_at')
                         ->where('board_status', 'ACTIVE'),
                 ],
                 'title'         => 'required|string|max:255',
@@ -116,6 +115,31 @@ class PostController extends Controller
             Log::error('validation 실패:', $e->errors());
             throw $e;
         }
+    }
+
+    /**
+     * 수정 모달용 단건 조회 — content 포함 전체 컬럼 반환.
+     * 목록(getList)에서는 content를 제외하므로 모달 오픈 시 별도 호출.
+     */
+    public function show($id)
+    {
+        $post = DB::selectOne("
+            SELECT P.*, U.email, U.name,
+                (SELECT STRING_AGG(banner_id::text, ',') FROM post_banners WHERE post_id = P.post_id) AS banner_ids
+            FROM posts AS P
+            INNER JOIN users AS U ON P.user_id = U.id
+            WHERE P.post_id = ?
+        ", [$id]);
+
+        if (!$post) {
+            return response()->json(['message' => '게시글을 찾을 수 없습니다.'], 404);
+        }
+
+        $post->banner_ids = $post->banner_ids
+            ? array_map('intval', explode(',', $post->banner_ids))
+            : [];
+
+        return response()->json($post);
     }
 
     public function store(Request $request)
@@ -140,7 +164,7 @@ class PostController extends Controller
         }
 
         // 업로드된 파일 ref_id 연결 + content 기준 동기화
-        $this->syncContentFiles($post->post_id, $post->content, $uploadedFileIds);
+        PostFileCleaner::syncContentFiles($post->post_id, $post->content, $uploadedFileIds);
 
         return redirect()->route('admin.posts.index')->with('message', '게시글이 등록되었습니다.');
     }
@@ -165,68 +189,9 @@ class PostController extends Controller
         $postBannerLib->sync((int) $id, $bannerIds);
 
         // 새로 업로드된 파일 ref_id 연결 + content에서 제거된 파일 삭제
-        $this->syncContentFiles((int) $id, $post->content, $uploadedFileIds);
+        PostFileCleaner::syncContentFiles((int) $id, $post->content, $uploadedFileIds);
 
         return redirect()->route('admin.posts.index')->with('message', '게시글이 수정되었습니다.');
-    }
-
-    /**
-     * content HTML 기준으로 files 테이블 동기화
-     * - 새로 업로드된 파일의 ref_id 연결
-     * - content에서 제거된 파일은 스토리지 + DB에서 삭제
-     */
-    private function syncContentFiles(int $postId, string $content, array $newFileIds = []): void
-    {
-        // 1. 새로 업로드된 파일 ref_id 연결 (ref_id = null 인 것만)
-        if (!empty($newFileIds)) {
-            DB::table('files')
-                ->whereIn('file_id', $newFileIds)
-                ->where('file_kind', 'POST')
-                ->whereNull('ref_id')
-                ->update(['ref_id' => $postId]);
-        }
-
-        // 2. content에서 현재 사용 중인 서버 이미지 URL 추출
-        preg_match_all('#/storage/uploads/post/[^\s"\'<>\)]+#', $content, $matches);
-        $urlsInContent = array_unique($matches[0] ?? []);
-
-        // 3. 이 포스트에 연결된 파일 중 content에 없는 것(고아 파일) 삭제
-        $orphanQuery = DB::table('files')
-            ->where('file_kind', 'POST')
-            ->where('ref_id', $postId);
-
-        if (!empty($urlsInContent)) {
-            $orphanQuery->whereNotIn('file_url', $urlsInContent);
-        }
-
-        $orphanFiles = $orphanQuery->get();
-        foreach ($orphanFiles as $file) {
-            // /storage/uploads/... → uploads/... (Storage::disk('public') 기준 경로)
-            $storagePath = ltrim(str_replace('/storage/', '', $file->file_url), '/');
-            Storage::disk('public')->delete($storagePath);
-        }
-        $orphanQuery->delete();
-    }
-
-    /**
-     * 게시물 삭제 시 연결된 모든 파일 스토리지 + DB에서 삭제
-     */
-    private function deletePostFiles(int $postId): void
-    {
-        $files = DB::table('files')
-            ->where('file_kind', 'POST')
-            ->where('ref_id', $postId)
-            ->get();
-
-        foreach ($files as $file) {
-            $storagePath = ltrim(str_replace('/storage/', '', $file->file_url), '/');
-            Storage::disk('public')->delete($storagePath);
-        }
-
-        DB::table('files')
-            ->where('file_kind', 'POST')
-            ->where('ref_id', $postId)
-            ->delete();
     }
 
     public function search(Request $request)
@@ -234,8 +199,7 @@ class PostController extends Controller
         $keyword = trim($request->input('keyword', ''));
 
         $query = DB::table('posts')
-            ->where('post_status', 'ACTIVE')
-            ->whereNull('deleted_at');
+            ->where('post_status', 'ACTIVE');
 
         if ($keyword !== '') {
             $query->where('title', 'ilike', '%' . $keyword . '%');
@@ -251,7 +215,7 @@ class PostController extends Controller
     public function destroy($id)
     {
         // 연결된 파일 스토리지 + DB에서 삭제
-        $this->deletePostFiles((int) $id);
+        PostFileCleaner::deleteByPost((int) $id);
 
         $postBannerLib = new PostBannerLib();
         $postBannerLib->deleteByPostId((int) $id);
@@ -264,5 +228,24 @@ class PostController extends Controller
         }
 
         return redirect()->route('admin.posts.index')->with('message', '게시글이 삭제되었습니다.');
+    }
+
+    public function destroyBulk(Request $request)
+    {
+        $ids = $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'integer',
+        ])['ids'];
+
+        $postLib       = new PostLib();
+        $postBannerLib = new PostBannerLib();
+
+        foreach ($ids as $id) {
+            PostFileCleaner::deleteByPost((int) $id);
+            $postBannerLib->deleteByPostId((int) $id);
+            $postLib->delete((int) $id);
+        }
+
+        return redirect()->route('admin.posts.index')->with('message', count($ids) . '개 게시글이 삭제되었습니다.');
     }
 }

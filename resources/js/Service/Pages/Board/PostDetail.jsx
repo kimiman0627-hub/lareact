@@ -180,7 +180,7 @@ function ShareButton({ title }) {
         }
     }
 
-    const encodedUrl   = encodeURIComponent(window.location.href);
+    const encodedUrl   = encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '');
     const encodedTitle = encodeURIComponent(title ?? '');
 
     return (
@@ -339,10 +339,14 @@ function LikeBar({ postId, initialLike, initialDislike, initialUserType, useLike
     );
 }
 
-export default function PostDetail({ post, comments = [], maxDepth = 2, boardOptions = {}, userLikeType = null, isScrapped = false, scrapCount = 0, prevPost = null, nextPost = null, seo = {} }) {
+export default function PostDetail({ post, isOwner = false, comments = [], maxDepth = 2, boardOptions = {}, userLikeType = null, isScrapped = false, scrapCount = 0, prevPost = null, nextPost = null, seo = {} }) {
     const { auth } = usePage().props;
     const authUser  = auth?.user ?? null;
     const [showReport, setShowReport] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const { delete: destroy, processing: deleting } = useForm();
+
+    if (!post) return null;
 
     // 최상위 댓글만 뽑아서 렌더링 (대댓글은 재귀로 처리)
     const topLevel = comments.filter(c => !c.parent_id);
@@ -369,11 +373,11 @@ export default function PostDetail({ post, comments = [], maxDepth = 2, boardOpt
                 <meta property="og:title" content={seo.title ?? post.title} />
                 <meta property="og:description" content={seo.description ?? ''} />
                 <meta property="og:url" content={seo.canonical ?? ''} />
-                {seo.ogImage && <meta property="og:image" content={seo.ogImage} />}
-                {seo.publishedAt && <meta property="article:published_time" content={seo.publishedAt} />}
+                {seo.ogImage ? <meta property="og:image" content={seo.ogImage} /> : null}
+                {seo.publishedAt ? <meta property="article:published_time" content={seo.publishedAt} /> : null}
                 <meta name="twitter:title" content={seo.title ?? post.title} />
                 <meta name="twitter:description" content={seo.description ?? ''} />
-                {seo.ogImage && <meta name="twitter:image" content={seo.ogImage} />}
+                {seo.ogImage ? <meta name="twitter:image" content={seo.ogImage} /> : null}
                 <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
             </Head>
             {/* 브레드크럼 */}
@@ -486,20 +490,63 @@ export default function PostDetail({ post, comments = [], maxDepth = 2, boardOpt
                             authUser={authUser}
                         />
                         <ShareButton title={post.title} />
-                        <button
-                            onClick={() => setShowReport(true)}
-                            className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 transition"
-                        >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H13l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-                            </svg>
-                            신고
-                        </button>
+                        {!isOwner && (
+                            <button
+                                onClick={() => setShowReport(true)}
+                                className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 transition"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H13l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                                </svg>
+                                신고
+                            </button>
+                        )}
+                        {isOwner && (
+                            <button
+                                onClick={() => setShowDeleteConfirm(true)}
+                                className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 transition"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                삭제
+                            </button>
+                        )}
                     </div>
                 </div>
             </article>
 
             {showReport && <ReportModal postId={post.post_id} onClose={() => setShowReport(false)} />}
+
+            {/* 삭제 확인 모달 */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div className="bg-white rounded-xl shadow-xl p-6 w-80 mx-4">
+                        <h3 className="text-base font-bold text-slate-800 mb-2">게시글 삭제</h3>
+                        <p className="text-sm text-slate-500 mb-5">
+                            게시글을 삭제하면 첨부 파일과 함께 복구할 수 없습니다.<br />삭제하시겠습니까?
+                        </p>
+                        <div className="flex gap-2 justify-end">
+                            <button
+                                onClick={() => setShowDeleteConfirm(false)}
+                                disabled={deleting}
+                                className="px-4 py-2 text-sm text-slate-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={() => destroy(`/post/${post.post_id}`, {
+                                    onSuccess: () => setShowDeleteConfirm(false),
+                                })}
+                                disabled={deleting}
+                                className="px-4 py-2 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600 transition disabled:opacity-50"
+                            >
+                                {deleting ? '삭제 중...' : '삭제'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* 댓글 영역 */}
             <section className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 px-5 py-4">

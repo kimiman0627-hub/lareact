@@ -552,7 +552,7 @@ export default function UserIndex({ users, total, params }) {
 
     return (
         <AdminLayout user={auth?.admin}>
-            <div className="p-6 max-w-7xl mx-auto">
+            <div className="space-y-4">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-gray-800">
                         회원 관리

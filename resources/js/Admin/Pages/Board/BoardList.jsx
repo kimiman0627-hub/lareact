@@ -75,7 +75,7 @@ export default function BoardList({
 
     return (
         <AdminLayout user={auth?.user}>
-            <div className="p-6 max-w-7xl mx-auto">
+            <div className="space-y-4">
                 <BoardModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}

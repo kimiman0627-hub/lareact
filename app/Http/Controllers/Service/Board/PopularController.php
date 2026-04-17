@@ -22,7 +22,6 @@ class PopularController extends Controller
             ->join('users as u', 'p.user_id', '=', 'u.id')
             ->join('boards as b', 'p.post_category', '=', 'b.category')
             ->where('p.post_status', 'ACTIVE')
-            ->whereNull('p.deleted_at')
             ->where('p.created_at', '>=', now()->subDays(7));
 
         $total = (clone $baseQuery)->count();

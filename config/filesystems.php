@@ -60,6 +60,19 @@ return [
             'report' => false,
         ],
 
+        // 네이버 클라우드 Object Storage (S3 호환 API)
+        'ncp' => [
+            'driver'                  => 's3',
+            'key'                     => env('NCP_STORAGE_ACCESS_KEY'),
+            'secret'                  => env('NCP_STORAGE_SECRET_KEY'),
+            'region'                  => env('NCP_STORAGE_REGION', 'kr-standard'),
+            'bucket'                  => env('NCP_STORAGE_BUCKET'),
+            'endpoint'                => env('NCP_STORAGE_ENDPOINT', 'https://kr.object.ncloudstorage.com'),
+            'use_path_style_endpoint' => true,
+            'throw'                   => false,
+            'report'                  => false,
+        ],
+
     ],
 
     /*
@@ -76,5 +89,8 @@ return [
     'links' => [
         public_path('storage') => storage_path('app/public'),
     ],
+
+    // 파일 저장소 종류: LOCAL | NCP (.env FILE_STORAGE 값으로 제어)
+    'file_storage' => env('FILE_STORAGE', 'LOCAL'),
 
 ];

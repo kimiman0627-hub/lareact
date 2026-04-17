@@ -47,7 +47,6 @@ class SitemapController extends Controller
 
         $boards = DB::table('boards')
             ->where('board_status', 'ACTIVE')
-            ->whereNull('deleted_at')
             ->orderBy('board_order')
             ->get(['category']);
 
@@ -79,7 +78,6 @@ class SitemapController extends Controller
     {
         $posts = DB::table('posts')
             ->where('post_status', 'ACTIVE')
-            ->whereNull('deleted_at')
             ->orderByDesc('post_id')
             ->limit(50000)
             ->get(['post_id', 'updated_at', 'created_at']);
@@ -106,7 +104,6 @@ class SitemapController extends Controller
     {
         $latest = DB::table('posts')
             ->where('post_status', 'ACTIVE')
-            ->whereNull('deleted_at')
             ->max('updated_at');
 
         return $latest ? substr($latest, 0, 10) : now()->toDateString();

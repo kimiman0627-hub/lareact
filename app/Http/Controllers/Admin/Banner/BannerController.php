@@ -149,8 +149,7 @@ class BannerController extends Controller
         $direction = $request->direction;
 
         // 현재 순서 기준 전체 목록 조회 (sort_order 같은 경우 banner_id로 2차 정렬)
-        $banners = Banner::whereNull('deleted_at')
-            ->orderBy('sort_order', 'asc')
+        $banners = Banner::orderBy('sort_order', 'asc')
             ->orderBy('banner_id', 'asc')
             ->get();
 
