@@ -1,19 +1,15 @@
-import React, { useState } from "react";
-import { http } from "@/Utils/http";
+import React from "react";
+import { useForm } from "@inertiajs/react";
 
 export default function Login() {
-    const [values, setValues] = useState({ email: "", password: "" });
-    const [errors, setErrors] = useState({});
-    const [processing, setProcessing] = useState(false); // 로딩 상태 직접 관리
+    const { data, setData, post, processing, errors } = useForm({
+        email: "",
+        password: "",
+    });
 
     const submit = (e) => {
         e.preventDefault();
-        setProcessing(true); // 로딩 시작
-
-        http.post("/admin/login", values, {
-            onError: (err) => setErrors(err),
-            onFinish: () => setProcessing(false), // 성공/실패 상관없이 로딩 종료
-        });
+        post("/admin/login");
     };
 
     return (
@@ -29,10 +25,8 @@ export default function Login() {
                         </label>
                         <input
                             type="email"
-                            value={values.email}
-                            onChange={(e) =>
-                                setValues({ ...values, email: e.target.value })
-                            }
+                            value={data.email}
+                            onChange={(e) => setData("email", e.target.value)}
                             className="w-full p-3 bg-slate-700 border border-slate-600 rounded text-white focus:ring-2 focus:ring-yellow-500 outline-none"
                         />
                         {errors.email && (
@@ -47,13 +41,8 @@ export default function Login() {
                         </label>
                         <input
                             type="password"
-                            value={values.password}
-                            onChange={(e) =>
-                                setValues({
-                                    ...values,
-                                    password: e.target.value,
-                                })
-                            }
+                            value={data.password}
+                            onChange={(e) => setData("password", e.target.value)}
                             className="w-full p-3 bg-slate-700 border border-slate-600 rounded text-white focus:ring-2 focus:ring-yellow-500 outline-none"
                         />
                     </div>

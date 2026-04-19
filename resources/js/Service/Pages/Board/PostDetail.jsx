@@ -1,9 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Head, Link, useForm, usePage } from "@inertiajs/react";
+import { Head, Link, useForm, usePage, router } from "@inertiajs/react";
 import ServiceLayout from "@/Service/Layouts/ServiceLayout";
 import { timeAgo, fmtHits } from "@/Service/Components/Board/BoardCard";
 import axios from "axios";
 import ReportModal from "@/Service/Components/Board/ReportModal";
+import Lightbox from "yet-another-react-lightbox";
+import "yet-another-react-lightbox/styles.css";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
 
 
 /** 댓글 입력 폼 */
@@ -147,7 +150,7 @@ function CommentItem({ comment, postId, authUser, maxDepth, replies = [], allCom
 }
 
 /** 공유 버튼 (클립보드 복사 + SNS) */
-function ShareButton({ title }) {
+function ShareButton({ title, ogImage }) {
     const [open, setOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     const ref = useRef(null);
@@ -159,17 +162,19 @@ function ShareButton({ title }) {
         return () => document.removeEventListener('mousedown', onClick);
     }, [open]);
 
+    const currentUrl   = typeof window !== 'undefined' ? window.location.href : '';
+    const encodedUrl   = encodeURIComponent(currentUrl);
+    const encodedTitle = encodeURIComponent(title ?? '');
+
     function copyUrl() {
-        const url = window.location.href;
         if (navigator.clipboard?.writeText) {
-            navigator.clipboard.writeText(url).then(() => {
+            navigator.clipboard.writeText(currentUrl).then(() => {
                 setCopied(true);
                 setTimeout(() => { setCopied(false); setOpen(false); }, 1500);
             });
         } else {
-            // HTTP 환경 fallback
             const el = document.createElement('textarea');
-            el.value = url;
+            el.value = currentUrl;
             el.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
             document.body.appendChild(el);
             el.select();
@@ -180,8 +185,64 @@ function ShareButton({ title }) {
         }
     }
 
-    const encodedUrl   = encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '');
-    const encodedTitle = encodeURIComponent(title ?? '');
+    function shareKakao() {
+        const appKey = document.querySelector('meta[name="kakao-key"]')?.content;
+        if (!appKey) { copyUrl(); return; }
+
+        const doShare = () => {
+            try {
+                if (!window.Kakao.isInitialized()) {
+                    window.Kakao.init(appKey);
+                }
+                const shareParams = ogImage
+                    ? {
+                        objectType: 'feed',
+                        content: {
+                            title: title ?? '',
+                            description: '',
+                            imageUrl: ogImage,
+                            link: { mobileWebUrl: currentUrl, webUrl: currentUrl },
+                        },
+                        buttons: [{ title: '게시글 보기', link: { mobileWebUrl: currentUrl, webUrl: currentUrl } }],
+                    }
+                    : {
+                        objectType: 'feed',
+                        content: {
+                            title: title ?? '',
+                            description: currentUrl,
+                            imageUrl: 'https://developers.kakao.com/assets/img/about/logos/kakaolink/kakaolink_btn_medium.png',
+                            link: { mobileWebUrl: currentUrl, webUrl: currentUrl },
+                        },
+                        buttons: [{ title: '게시글 보기', link: { mobileWebUrl: currentUrl, webUrl: currentUrl } }],
+                    };
+                window.Kakao.Share.sendDefault(shareParams);
+            } catch (e) {
+                console.error('Kakao share error:', e);
+                copyUrl();
+            }
+        };
+
+        if (window.Kakao) {
+            doShare();
+        } else {
+            const s = document.createElement('script');
+            s.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js';
+            s.onload = doShare;
+            s.onerror = () => copyUrl();
+            document.head.appendChild(s);
+        }
+        setOpen(false);
+    }
+
+    // 인스타그램: 모바일은 Web Share API(시스템 공유 시트), 데스크탑은 URL 복사
+    function shareInstagram() {
+        if (navigator.share) {
+            navigator.share({ title: title ?? '', url: currentUrl }).catch(() => {});
+        } else {
+            copyUrl();
+        }
+        setOpen(false);
+    }
 
     return (
         <div className="relative" ref={ref}>
@@ -198,7 +259,73 @@ function ShareButton({ title }) {
             </button>
 
             {open && (
-                <div className="absolute bottom-full right-0 mb-2 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-50">
+                <div className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-50">
+                    {/* 카카오톡 */}
+                    <button
+                        onClick={shareKakao}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
+                    >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#FEE500">
+                            <path d="M12 3C7.03 3 3 6.36 3 10.5c0 2.61 1.6 4.9 4 6.29l-.7 2.52c-.12.43.15.42.32.3l2.93-1.99c.47.07.95.11 1.46.11 4.97 0 9-3.36 9-7.5S16.97 3 12 3z"/>
+                        </svg>
+                        카카오톡
+                    </button>
+
+                    {/* 인스타그램 */}
+                    <button
+                        onClick={shareInstagram}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
+                    >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#E4405F">
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                        </svg>
+                        인스타그램
+                    </button>
+
+                    {/* 쓰레드 */}
+                    <a
+                        href={`https://www.threads.net/intent/post?text=${encodedTitle}%20${encodedUrl}`}
+                        target="_blank" rel="noreferrer"
+                        onClick={() => setOpen(false)}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
+                    >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.75a8.29 8.29 0 004.83 1.53v-3.4a4.85 4.85 0 01-1.06-.19z"/>
+                        </svg>
+                        쓰레드
+                    </a>
+
+                    <div className="border-t border-gray-100 my-1" />
+
+                    {/* X (Twitter) */}
+                    <a
+                        href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`}
+                        target="_blank" rel="noreferrer"
+                        onClick={() => setOpen(false)}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
+                    >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.261 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                        </svg>
+                        X (Twitter)
+                    </a>
+
+                    {/* Facebook */}
+                    <a
+                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
+                        target="_blank" rel="noreferrer"
+                        onClick={() => setOpen(false)}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
+                    >
+                        <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                        </svg>
+                        Facebook
+                    </a>
+
+                    <div className="border-t border-gray-100 my-1" />
+
+                    {/* URL 복사 */}
                     <button
                         onClick={copyUrl}
                         className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
@@ -209,26 +336,6 @@ function ShareButton({ title }) {
                         }
                         {copied ? '복사됨!' : 'URL 복사'}
                     </button>
-                    <a
-                        href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`}
-                        target="_blank" rel="noreferrer"
-                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
-                    >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.261 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                        </svg>
-                        X (Twitter)
-                    </a>
-                    <a
-                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
-                        target="_blank" rel="noreferrer"
-                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
-                    >
-                        <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                        </svg>
-                        Facebook
-                    </a>
                 </div>
             )}
         </div>
@@ -339,12 +446,34 @@ function LikeBar({ postId, initialLike, initialDislike, initialUserType, useLike
     );
 }
 
-export default function PostDetail({ post, isOwner = false, comments = [], maxDepth = 2, boardOptions = {}, userLikeType = null, isScrapped = false, scrapCount = 0, prevPost = null, nextPost = null, seo = {} }) {
+export default function PostDetail({ post, isOwner = false, boardPosts = [], boardPostsTotal = 0, boardPostsPage = 1, boardPostsPerPage = 15, comments = [], maxDepth = 2, boardOptions = {}, userLikeType = null, isScrapped = false, scrapCount = 0, prevPost = null, nextPost = null, seo = {} }) {
     const { auth } = usePage().props;
     const authUser  = auth?.user ?? null;
     const [showReport, setShowReport] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(-1);
+    const [lightboxSlides, setLightboxSlides] = useState([]);
     const { delete: destroy, processing: deleting } = useForm();
+    const contentRef = useRef(null);
+
+    useEffect(() => {
+        const el = contentRef.current;
+        if (!el) return;
+        const imgs = Array.from(el.querySelectorAll('img'));
+        const slides = imgs.map(img => ({ src: img.src, alt: img.alt }));
+        setLightboxSlides(slides);
+        imgs.forEach((img, i) => {
+            img.style.cursor = 'zoom-in';
+            img.onclick = () => setLightboxIndex(i);
+            img.onerror = () => {
+                const placeholder = document.createElement('div');
+                placeholder.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;color:#94a3b8;font-size:13px;max-width:100%;';
+                placeholder.innerHTML = '<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>이미지를 불러올 수 없습니다';
+                img.replaceWith(placeholder);
+            };
+        });
+        return () => { imgs.forEach(img => { img.onclick = null; img.onerror = null; }); };
+    }, [post?.content]);
 
     if (!post) return null;
 
@@ -428,6 +557,7 @@ export default function PostDetail({ post, isOwner = false, comments = [], maxDe
 
                 {/* 본문 */}
                 <div
+                    ref={contentRef}
                     className="px-5 py-6 prose prose-sm max-w-none text-slate-700 leading-relaxed post-content"
                     dangerouslySetInnerHTML={{ __html: post.content }}
                 />
@@ -489,7 +619,7 @@ export default function PostDetail({ post, isOwner = false, comments = [], maxDe
                             initialCount={scrapCount}
                             authUser={authUser}
                         />
-                        <ShareButton title={post.title} />
+                        <ShareButton title={post.title} ogImage={seo.ogImage ?? null} />
                         {!isOwner && (
                             <button
                                 onClick={() => setShowReport(true)}
@@ -516,6 +646,13 @@ export default function PostDetail({ post, isOwner = false, comments = [], maxDe
                 </div>
             </article>
 
+            <Lightbox
+                open={lightboxIndex >= 0}
+                index={lightboxIndex}
+                close={() => setLightboxIndex(-1)}
+                slides={lightboxSlides}
+                plugins={[Zoom]}
+            />
             {showReport && <ReportModal postId={post.post_id} onClose={() => setShowReport(false)} />}
 
             {/* 삭제 확인 모달 */}
@@ -547,6 +684,97 @@ export default function PostDetail({ post, isOwner = false, comments = [], maxDe
                     </div>
                 </div>
             )}
+
+            {/* 같은 게시판 글 목록 */}
+            {boardPosts.length > 0 && (() => {
+                const totalPages = Math.ceil(boardPostsTotal / boardPostsPerPage);
+                const goPage = (page) => router.visit(`/post/${post.post_id}`, {
+                    data: { list_page: page },
+                    preserveScroll: false,
+                    preserveState: false,
+                });
+
+                const pageNumbers = (() => {
+                    const range = [];
+                    const start = Math.max(1, boardPostsPage - 2);
+                    const end   = Math.min(totalPages, boardPostsPage + 2);
+                    for (let i = start; i <= end; i++) range.push(i);
+                    return range;
+                })();
+
+                return (
+                    <section className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                            <h2 className="text-sm font-bold text-slate-700">{post.board_name} 글 목록</h2>
+                            <Link href={`/board/${post.category}`} className="text-xs text-blue-500 hover:underline">
+                                전체보기
+                            </Link>
+                        </div>
+
+                        <ul className="divide-y divide-gray-100">
+                            {boardPosts.map(p => {
+                                const isCurrent = p.post_id === post.post_id;
+                                return (
+                                    <li key={p.post_id} className={isCurrent ? "bg-blue-50" : ""}>
+                                        <Link
+                                            href={`/post/${p.post_id}`}
+                                            className={`flex items-center gap-3 px-5 py-2.5 transition group ${isCurrent ? "cursor-default pointer-events-none" : "hover:bg-slate-50"}`}
+                                        >
+                                            {p.is_notice && (
+                                                <span className="shrink-0 text-[10px] font-bold text-white bg-red-500 rounded px-1.5 py-0.5 leading-tight">공지</span>
+                                            )}
+                                            {isCurrent && (
+                                                <span className="shrink-0 text-[10px] font-bold text-white bg-blue-500 rounded px-1.5 py-0.5 leading-tight">현재글</span>
+                                            )}
+                                            {p.has_image && (
+                                                <svg className="shrink-0 w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            )}
+                                            <span className={`flex-1 text-sm truncate transition ${isCurrent ? "font-bold text-blue-600" : "text-slate-700 group-hover:text-blue-500"}`}>
+                                                {p.title}
+                                            </span>
+                                            <span className="shrink-0 text-xs text-slate-400 hidden sm:block">{p.name}</span>
+                                            {p.comment_count > 0 && (
+                                                <span className="shrink-0 text-xs text-blue-400 font-medium">[{p.comment_count}]</span>
+                                            )}
+                                            <span className="shrink-0 text-xs text-slate-300">{timeAgo(p.created_at)}</span>
+                                        </Link>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-center gap-1 px-5 py-3 border-t border-gray-100">
+                                <button
+                                    onClick={() => goPage(boardPostsPage - 1)}
+                                    disabled={boardPostsPage <= 1}
+                                    className="px-2 py-1 text-xs text-slate-500 hover:text-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                >
+                                    ‹
+                                </button>
+                                {pageNumbers.map(n => (
+                                    <button
+                                        key={n}
+                                        onClick={() => goPage(n)}
+                                        className={`px-2.5 py-1 text-xs rounded transition ${n === boardPostsPage ? "bg-blue-500 text-white font-bold" : "text-slate-500 hover:text-blue-500 hover:bg-blue-50"}`}
+                                    >
+                                        {n}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => goPage(boardPostsPage + 1)}
+                                    disabled={boardPostsPage >= totalPages}
+                                    className="px-2 py-1 text-xs text-slate-500 hover:text-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                >
+                                    ›
+                                </button>
+                            </div>
+                        )}
+                    </section>
+                );
+            })()}
 
             {/* 댓글 영역 */}
             <section className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 px-5 py-4">

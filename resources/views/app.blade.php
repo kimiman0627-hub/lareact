@@ -4,11 +4,17 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" type="image/png" sizes="256x256" href="/favicon-256.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/favicon-apple.png" />
         <link rel="alternate icon" href="/favicon.ico" />
         <meta name="robots" content="index, follow" />
         <meta name="google-adsense-account" content="ca-pub-2524436697997672" />
         <meta property="og:locale" content="ko_KR" />
         <meta property="og:site_name" content="{{ config('app.name') }}" />
+        @if(config('config.kakao_js_key'))
+        <meta name="kakao-key" content="{{ config('config.kakao_js_key') }}" />
+        @endif
         <meta name="twitter:card" content="summary_large_image" />
         @inertiaHead
         @viteReactRefresh

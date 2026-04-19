@@ -26,8 +26,8 @@ export default function TopBar() {
         router.visit("/search", { method: "get", data: { q: query.trim() }, preserveState: false });
     };
 
-    const SearchForm = ({ className = "" }) => (
-        <form onSubmit={handleSearch} className={className}>
+    const searchInput = (
+        <form onSubmit={handleSearch} className="w-full">
             <div className="flex items-center bg-white/10 border border-white/20 rounded-lg overflow-hidden focus-within:border-sky-400 focus-within:bg-white/15 transition">
                 <input
                     type="text"
@@ -59,8 +59,8 @@ export default function TopBar() {
                     </Link>
 
                     {/* 검색 — md 이상에서 정중앙 고정 (absolute) */}
-                    <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 w-full max-w-sm lg:max-w-md px-4 pointer-events-none">
-                        <SearchForm className="w-full pointer-events-auto" />
+                    <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 w-full max-w-sm lg:max-w-md px-4">
+                        {searchInput}
                     </div>
 
                     {/* 스페이서 (모바일에서 유저버튼을 오른쪽 정렬) */}
@@ -132,7 +132,7 @@ export default function TopBar() {
 
                 {/* ── 2행: 검색 — 모바일에서만 표시 ── */}
                 <div className="md:hidden pb-2">
-                    <SearchForm className="w-full" />
+                    {searchInput}
                 </div>
 
             </div>

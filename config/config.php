@@ -100,4 +100,7 @@ return [
         'secret_comment' => false,
         'comment_depth'  => 2,
     ],
+
+    // 카카오 공유 JS SDK 키 (https://developers.kakao.com 에서 발급)
+    'kakao_js_key' => env('KAKAO_JS_KEY', ''),
 ];

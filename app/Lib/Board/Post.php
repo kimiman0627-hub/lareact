@@ -62,6 +62,10 @@ class Post
             $this->where('P.post_category', '=', $this->params['post_category']);
         }
 
+        if (!empty($this->params['exclude_id'] ?? null)) {
+            $this->where('P.post_id', '!=', $this->params['exclude_id']);
+        }
+
         if (!empty($this->params['source'] ?? null)) {
             if ($this->params['source'] === 'DIRECT') {
                 $this->whereRaw('P.source IS NULL');
@@ -78,6 +82,9 @@ class Post
             $this->whereBetween('P.created_at', $this->params['start_date'], $this->params['end_date']);
         }
 
+        if (!empty($this->params['order_by_notice'] ?? null)) {
+            $this->orderBy('P.is_notice', 'DESC');
+        }
         $this->orderBy('P.created_at', 'DESC');
         $this->limit($this->params['page'] ?? 1, $this->params['per_page'] ?? 20);
     }

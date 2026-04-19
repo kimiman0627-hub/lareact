@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "@inertiajs/react";
 import { timeAgo } from "./BoardCard";
 
@@ -19,16 +20,18 @@ function RankBadge({ rank }) {
 
 // 대형 카드 — h-full로 소형 카드 컬럼 높이에 맞춤
 function FeaturedCard({ post }) {
+    const [imgError, setImgError] = useState(false);
     return (
         <Link
             href={`/post/${post.post_id}`}
             className="relative block w-full h-full rounded-xl overflow-hidden group shadow-sm"
         >
-            {post.thumbnail ? (
+            {post.thumbnail && !imgError ? (
                 <img
                     src={post.thumbnail}
                     alt={post.title}
                     className="absolute inset-0 w-full h-full object-cover transition duration-300 group-hover:scale-105"
+                    onError={() => setImgError(true)}
                 />
             ) : (
                 <div className={`absolute inset-0 ${GRADIENTS[0]}`} />
@@ -63,6 +66,7 @@ function FeaturedCard({ post }) {
 
 // 소형 카드 — 고정 높이 h-16, 썸네일은 absolute로 클립
 function SmallCard({ post, rank }) {
+    const [imgError, setImgError] = useState(false);
     const grad = GRADIENTS[rank - 1] ?? GRADIENTS[rank % GRADIENTS.length];
     return (
         <Link
@@ -71,11 +75,12 @@ function SmallCard({ post, rank }) {
         >
             {/* 썸네일 — 고정 너비, absolute 이미지 */}
             <div className="relative shrink-0 w-24 overflow-hidden">
-                {post.thumbnail ? (
+                {post.thumbnail && !imgError ? (
                     <img
                         src={post.thumbnail}
                         alt={post.title}
                         className="absolute inset-0 w-full h-full object-cover transition duration-300 group-hover:scale-105"
+                        onError={() => setImgError(true)}
                     />
                 ) : (
                     <div className={`absolute inset-0 ${grad} flex items-center justify-center`}>

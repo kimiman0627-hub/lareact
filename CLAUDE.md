@@ -21,7 +21,7 @@
 
 ### 광고 게이트 (Ad Gate) — 핵심 비즈니스 로직
 
-게시글 상세 열람 전에 쿠팡파트너스 광고 배너를 노출하고, 사용자가 링크를 클릭한 후 돌아오면 게시글을 열람할 수 있도록 하는 흐름.
+게시글 상세 열람 전에 쿠팡파트너스 광고, 구글애드센스 배너를 노출하고, 사용자가 링크를 클릭한 후 돌아오면 게시글을 열람할 수 있도록 하는 흐름.
 
 **플로우**:
 
@@ -193,6 +193,7 @@ php artisan repair:etoland-videos --download-external  # 이토랜드 외부 URL
 ```
 
 적용 범위:
+
 - `config/config.php` 의 모든 키 (post_statuses, board_layouts, banner_positions 등)
 - DB 컬럼에 저장되는 상태값 (post_status, board_layout, board_type 등)
 - 마이그레이션 `default()` 값

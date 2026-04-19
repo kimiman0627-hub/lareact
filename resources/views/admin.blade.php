@@ -7,9 +7,9 @@
         <link rel="alternate icon" href="/favicon.ico" />
         <title>KRLived Admin</title>
         @routes
-        @viteReactRefresh
-        @vite(['resources/css/admin.css', 'resources/js/admin.jsx']) 
         @inertiaHead
+        @viteReactRefresh
+        @vite(['resources/css/admin.css', 'resources/js/admin.jsx'])
     </head>
     <body class="bg-gray-100">
         @inertia

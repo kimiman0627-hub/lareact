@@ -8,6 +8,8 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use App\Lib\Board\Board as BoardLib;
+use App\Lib\Board\Post as PostLib;
 use App\Lib\Board\PostFileCleaner;
 use Inertia\Inertia;
 
@@ -26,28 +28,20 @@ class BoardController extends Controller
             abort(404);
         }
 
-        $options    = is_string($board->options) ? json_decode($board->options, true) : (array) $board->options;
-        $perPage    = (int) ($options['posts_per_page'] ?? 20);
-        $page       = max(1, (int) $request->input('page', 1));
+        $options = is_string($board->options) ? json_decode($board->options, true) : (array) $board->options;
+        $perPage = (int) ($options['posts_per_page'] ?? 20);
+        $page    = max(1, (int) $request->input('page', 1));
 
-        $baseQuery = DB::table('posts as p')
-            ->join('users as u', 'p.user_id', '=', 'u.id')
-            ->where('p.post_category', $category)
-            ->where('p.post_status', 'ACTIVE');
+        $postLib = new PostLib([
+            'post_category'   => $category,
+            'post_status'     => 'ACTIVE',
+            'order_by_notice' => true,
+            'page'            => $page,
+            'per_page'        => $perPage,
+        ]);
 
-        $total = (clone $baseQuery)->count();
-
-        $posts = (clone $baseQuery)
-            ->orderByDesc('p.is_notice')
-            ->orderByDesc('p.created_at')
-            ->offset(($page - 1) * $perPage)
-            ->limit($perPage)
-            ->get([
-                'p.post_id', 'p.title', 'p.is_notice', 'p.hits',
-                'p.comment_count', 'p.created_at', 'p.source',
-                'u.name as author',
-                DB::raw("EXISTS (SELECT 1 FROM files WHERE file_kind = 'POST' AND ref_id = p.post_id) AS has_image"),
-            ]);
+        $total = $postLib->getCount();
+        $posts = $postLib->getList();
 
         $paginated = new LengthAwarePaginator(
             $posts,
@@ -71,7 +65,7 @@ class BoardController extends Controller
         ]);
     }
 
-    public function show(int $id)
+    public function show(Request $request, int $id)
     {
         Inertia::setRootView('app');
 
@@ -135,6 +129,19 @@ class BoardController extends Controller
             ->orderBy('post_id')
             ->first(['post_id', 'title']);
 
+        // 같은 게시판 글 목록 (현재 글 포함, 페이징)
+        $listPage    = max(1, (int) $request->input('list_page', 1));
+        $listPerPage = 15;
+        $listLib     = new PostLib([
+            'post_category'   => $post->post_category,
+            'post_status'     => 'ACTIVE',
+            'order_by_notice' => true,
+            'page'            => $listPage,
+            'per_page'        => $listPerPage,
+        ]);
+        $boardPostsTotal = $listLib->getCount();
+        $boardPosts      = $listLib->getList();
+
         // SEO: 본문에서 description 추출 (HTML 제거 후 160자)
         $rawText    = mb_substr(trim(strip_tags($post->content)), 0, 160);
         $description = mb_strlen($rawText) >= 155 ? $rawText . '...' : $rawText;
@@ -155,6 +162,10 @@ class BoardController extends Controller
         return Inertia::render('Board/PostDetail', [
             'post'         => $post,
             'isOwner'      => $isOwner,
+            'boardPosts'      => $boardPosts,
+            'boardPostsTotal' => $boardPostsTotal,
+            'boardPostsPage'  => $listPage,
+            'boardPostsPerPage' => $listPerPage,
             'comments'     => $comments,
             'maxDepth'     => $maxDepth,
             'boardOptions' => $boardOptions,
@@ -182,15 +193,11 @@ class BoardController extends Controller
     {
         Inertia::setRootView('app');
 
-        $boards = DB::table('boards')
-            ->where('board_status', 'ACTIVE')
-            ->orderBy('board_order')
-            ->orderBy('board_id')
-            ->get(['category', 'board_name', 'options']);
+        $boards = (new BoardLib(['board_status' => 'ACTIVE', 'per_page' => 1000]))->getList();
 
         // 작성 권한이 ADMIN 전용인 게시판은 목록에서 제외
-        $writableBoards = $boards->filter(function ($board) {
-            $options = is_string($board->options) ? json_decode($board->options, true) : [];
+        $writableBoards = collect($boards)->filter(function ($board) {
+            $options = is_string($board->options) ? json_decode($board->options, true) : (array) $board->options;
             return ($options['write_permission'] ?? 'MEMBER') !== 'ADMIN';
         })->values();
 
@@ -224,7 +231,7 @@ class BoardController extends Controller
             abort(403, '관리자만 작성 가능한 게시판입니다.');
         }
 
-        $postId = DB::table('posts')->insertGetId([
+        $created = (new PostLib([
             'user_id'       => Auth::id(),
             'post_status'   => 'ACTIVE',
             'post_type'     => 'NORMAL',
@@ -233,9 +240,9 @@ class BoardController extends Controller
             'content'       => $validated['content'],
             'is_notice'     => false,
             'hits'          => 0,
-            'created_at'    => now(),
-            'updated_at'    => now(),
-        ], 'post_id');
+        ]))->create();
+
+        $postId = $created->post_id;
 
         PostFileCleaner::syncContentFiles($postId, $validated['content'], $validated['uploaded_file_ids'] ?? []);
 
@@ -247,9 +254,8 @@ class BoardController extends Controller
      */
     public function destroy(int $id)
     {
-        $post = DB::table('posts')
-            ->where('post_id', $id)
-            ->first(['post_id', 'user_id', 'post_category']);
+        $postLib = new PostLib([]);
+        $post    = $postLib->find($id);
 
         if (!$post) {
             abort(404);
@@ -262,7 +268,7 @@ class BoardController extends Controller
 
         PostFileCleaner::deleteByPost($id);
 
-        DB::table('posts')->where('post_id', $id)->delete();
+        $postLib->delete($id);
 
         return redirect()
             ->route('board.index', ['category' => $post->post_category])
