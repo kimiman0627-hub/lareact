@@ -84,6 +84,19 @@ return [
             ],
         ],
         [
+            'title'      => '관리자 관리',
+            'icon'       => 'fa-solid fa-user-shield',
+            'route'      => 'admin.admins.index',
+            'super_only' => true,
+            'submenu'    => [
+                [
+                    'title' => '관리자 목록',
+                    'icon'  => 'fa-solid fa-list',
+                    'route' => 'admin.admins.index',
+                ],
+            ],
+        ],
+        [
             'title' => '사이트 설정',
             'icon' => 'fa-solid fa-gear',
             'route' => 'admin.settings.site',

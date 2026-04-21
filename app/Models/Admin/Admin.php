@@ -10,6 +10,9 @@ class Admin extends Authenticatable
 {
     use Notifiable;
     protected $guarded = ['id'];
-    // protected $fillable = ['name', 'email', 'password'];
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden  = ['password', 'remember_token'];
+    protected $casts   = [
+        'is_super'         => 'boolean',
+        'menu_permissions' => 'array',
+    ];
 }

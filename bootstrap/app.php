@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\AdminPermission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -41,6 +42,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // web 미들웨어 그룹 맨 뒤에 Inertia 미들웨어를 추가합니다.
         $middleware->web(append: [
             HandleInertiaRequests::class,
+        ]);
+        $middleware->alias([
+            'admin.permission' => AdminPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -15,13 +15,15 @@ use App\Http\Controllers\Admin\Inquiry\InquiryController as AdminInquiryControll
 use App\Http\Controllers\Admin\Report\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\Stats\StatController;
 use App\Http\Controllers\Admin\Setting\SiteSettingController;
+use App\Http\Controllers\Admin\Setting\AdminProfileController;
+use App\Http\Controllers\Admin\AdminManager\AdminManagerController;
 
 // 관리자 
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::middleware(['auth:admin'])->group(function () {
+Route::middleware(['auth:admin', 'admin.permission'])->group(function () {
     // 관리자 로그아웃 (반드시 post 방식 권장)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     
@@ -35,8 +37,8 @@ Route::middleware(['auth:admin'])->group(function () {
     //   PUT|PATCH       admin/users/{user} ............... admin.users.update › Admin\User\UserController@update
     //   DELETE          admin/users/{user} ............. admin.users.destroy › Admin\User\UserController@destroy
     //   GET|HEAD        admin/users/{user}/edit .............. admin.users.edit › Admin\User\UserController@edit
-    Route::get('users/search',              [UserController::class, 'search'])->name('admin.users.search');
-    Route::get('users/{user}/activities',   [UserController::class, 'activities'])->name('admin.users.activities');
+    Route::get('users/search',              [UserController::class, 'search'])->name('users.search');
+    Route::get('users/{user}/activities',   [UserController::class, 'activities'])->name('users.activities');
     Route::resource('users', UserController::class);
 
     Route::get('posts/search', [PostController::class, 'search'])->name('posts.search');
@@ -75,5 +77,18 @@ Route::middleware(['auth:admin'])->group(function () {
     // 사이트 설정
     Route::get('settings/site',    [SiteSettingController::class, 'index'])->name('settings.site');
     Route::post('settings/site',   [SiteSettingController::class, 'update'])->name('settings.site.update');
+
+    // 관리자 프로필 (자기 자신)
+    Route::get('settings/profile',   [AdminProfileController::class, 'index'])->name('settings.profile');
+    Route::post('settings/profile',  [AdminProfileController::class, 'updateProfile'])->name('settings.profile.update');
+    Route::post('settings/password', [AdminProfileController::class, 'updatePassword'])->name('settings.password.update');
+
+    // 관리자 관리 (슈퍼 관리자 전용)
+    Route::get('admins',                       [AdminManagerController::class, 'index'])->name('admins.index');
+    Route::post('admins',                      [AdminManagerController::class, 'store'])->name('admins.store');
+    Route::put('admins/{id}',                  [AdminManagerController::class, 'update'])->name('admins.update');
+    Route::post('admins/{id}/password',        [AdminManagerController::class, 'updatePassword'])->name('admins.password');
+    Route::put('admins/{id}/permissions',      [AdminManagerController::class, 'updatePermissions'])->name('admins.permissions');
+    Route::delete('admins/{id}',               [AdminManagerController::class, 'destroy'])->name('admins.destroy');
 });
 

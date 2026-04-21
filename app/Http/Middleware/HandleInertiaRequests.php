@@ -27,6 +27,45 @@ class HandleInertiaRequests extends Middleware
      * 캐시 실패(Redis 장애, 디스크 풀 등) 시 예외를 삼키고 콜백 결과를 직접 반환.
      * 캐시 없이 DB에서 직접 읽으므로 사이트는 정상 동작 유지됨.
      */
+    private function filterAdminMenu($admin, array $menus): array
+    {
+        $result = [];
+
+        foreach ($menus as $item) {
+            // 슈퍼 전용 항목: 슈퍼 관리자가 아니면 제외
+            if (!empty($item['super_only']) && !$admin->is_super) {
+                continue;
+            }
+
+            // 슈퍼 관리자거나 permissions 미설정이면 전체 노출
+            if ($admin->is_super || is_null($admin->menu_permissions)) {
+                $result[] = $item;
+                continue;
+            }
+
+            $permissions = $admin->menu_permissions ?? [];
+
+            if (empty($item['submenu'])) {
+                if (in_array($item['route'], $permissions)) {
+                    $result[] = $item;
+                }
+                continue;
+            }
+
+            $filteredSub = array_values(array_filter(
+                $item['submenu'],
+                fn($sub) => in_array($sub['route'], $permissions)
+            ));
+
+            if (!empty($filteredSub)) {
+                $item['submenu'] = $filteredSub;
+                $result[] = $item;
+            }
+        }
+
+        return $result;
+    }
+
     private function safeCache(string $key, int $ttl, callable $callback): mixed
     {
         try {
@@ -56,8 +95,10 @@ class HandleInertiaRequests extends Middleware
                 'admin' => $request->user('admin'), // 관리자 유저
             ],
 
-            // 관리자로 인증된 경우에만 config/admin.php의 menu를 전달
-            'adminMenu' => $request->user('admin') ? config('admin.menu') : [],
+            // 관리자로 인증된 경우에만 config/admin.php의 menu를 전달 (권한 필터링 적용)
+            'adminMenu' => $request->user('admin')
+                ? $this->filterAdminMenu($request->user('admin'), config('admin.menu'))
+                : [],
 
             // GNB 게시판 목록 (모든 페이지 공유)
             'gnbBoards' => DB::table('boards')
