@@ -31,6 +31,9 @@ abstract class BaseScraper extends Command
     // 이미지 최소 크기 (bytes): 이하는 트래킹 픽셀·아이콘으로 간주해 스킵
     private const MIN_IMAGE_SIZE = 3072; // 3 KB
 
+    // 본문 최소 텍스트 글자 수: 미만이면 AdSense 저품질 콘텐츠로 간주해 스킵
+    protected const MIN_TEXT_LENGTH = 500;
+
     // 비디오 최대 크기 (bytes): 초과하면 용량 절감을 위해 스킵
     private const MAX_VIDEO_SIZE = 52428800; // 50 MB
 
@@ -628,6 +631,18 @@ abstract class BaseScraper extends Command
         }
 
         return $content;
+    }
+
+    /**
+     * HTML에서 태그를 제거한 순수 텍스트 글자 수 반환 (공백 정규화 후 mb_strlen).
+     * AdSense 품질 기준 필터링에 사용.
+     */
+    protected function extractTextLength(string $html): int
+    {
+        $text = strip_tags($html);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/', ' ', $text);
+        return mb_strlen(trim($text));
     }
 
     /**

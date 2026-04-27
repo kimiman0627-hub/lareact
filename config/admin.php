@@ -118,6 +118,11 @@ return [
                     'icon' => 'fa-solid fa-users',
                     'route' => 'admin.stats.users',
                 ],
+                [
+                    'title' => '배너 통계',
+                    'icon' => 'fa-solid fa-rectangle-ad',
+                    'route' => 'admin.stats.banners',
+                ],
             ],
         ],
         [

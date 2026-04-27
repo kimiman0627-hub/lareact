@@ -1,4 +1,16 @@
+import { useEffect } from "react";
+import axios from "axios";
 import BannerRenderer from "./BannerRenderer";
+
+function recordImpression(bannerId) {
+    // sendBeacon 우선, 미지원 시 axios fallback
+    const url = `/banner/${bannerId}/impression`;
+    if (navigator.sendBeacon) {
+        navigator.sendBeacon(url);
+    } else {
+        axios.post(url).catch(() => {});
+    }
+}
 
 /**
  * 위치(position)에 따라 배너 목록을 적절한 레이아웃으로 렌더링
@@ -8,14 +20,17 @@ import BannerRenderer from "./BannerRenderer";
  * 그 외               — 세로 스택 (기본)
  */
 export default function BannerSlot({ banners = [], position = "" }) {
-    // 1. 데이터를 배열로 통일 (단일 객체면 [ ]로 감싸고, 없으면 빈 배열)
     const safeBanners = Array.isArray(banners)
         ? banners
         : banners
           ? [banners]
           : [];
 
-    // 2. 비어있으면 렌더링 안 함
+    // 노출 기록: 배너가 렌더링될 때 한 번씩 기록
+    useEffect(() => {
+        safeBanners.forEach((banner) => recordImpression(banner.banner_id));
+    }, [safeBanners.map((b) => b.banner_id).join(",")]);
+
     if (safeBanners.length === 0) return null;
 
     if (position === "MAIN_BOARD_CATEGORY") {
@@ -34,7 +49,6 @@ export default function BannerSlot({ banners = [], position = "" }) {
         );
     }
 
-    // SIDE 및 기본: 세로 스택
     return (
         <div className="space-y-4">
             {safeBanners.map((banner) => (

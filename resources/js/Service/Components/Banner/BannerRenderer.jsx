@@ -73,6 +73,15 @@ ${banner.content ?? ""}
  * VIDEO  — dangerouslySetInnerHTML
  * SCRIPT — 격리된 srcdoc iframe (외부 위젯 스크립트 안전 실행)
  */
+function recordClick(bannerId) {
+    const url = `/banner/${bannerId}/click`;
+    if (navigator.sendBeacon) {
+        navigator.sendBeacon(url);
+    } else {
+        fetch(url, { method: "POST", keepalive: true }).catch(() => {});
+    }
+}
+
 export default function BannerRenderer({ banner, className = "" }) {
     if (banner.banner_type === "IMAGE") {
         const img = (
@@ -87,6 +96,7 @@ export default function BannerRenderer({ banner, className = "" }) {
                 href={banner.link_url}
                 target={banner.is_new_tab ? "_blank" : "_self"}
                 rel="noopener noreferrer"
+                onClick={() => recordClick(banner.banner_id)}
             >
                 {img}
             </a>

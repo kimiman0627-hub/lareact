@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\Board\CommentController;
 use App\Http\Controllers\Admin\Board\LikeController;
 use App\Http\Controllers\Admin\Board\ScrapController as AdminScrapController;
 use App\Http\Controllers\Admin\Banner\BannerController;
+use App\Http\Controllers\Admin\Banner\BannerStatController as AdminBannerStatController;
 use App\Http\Controllers\Admin\File\FileController;
 use App\Http\Controllers\Admin\Crawl\CrawlLogController;
 use App\Http\Controllers\Admin\Inquiry\InquiryController as AdminInquiryController;
@@ -73,6 +74,7 @@ Route::middleware(['auth:admin', 'admin.permission'])->group(function () {
 
     // 통계
     Route::get('stats/users',      [StatController::class, 'index'])->name('stats.users');
+    Route::get('stats/banners',    [AdminBannerStatController::class, 'index'])->name('stats.banners');
 
     // 사이트 설정
     Route::get('settings/site',    [SiteSettingController::class, 'index'])->name('settings.site');

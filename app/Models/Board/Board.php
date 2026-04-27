@@ -40,6 +40,7 @@ class Board extends Model
                     'p.created_at',
                     'p.is_notice',
                     'u.name as author',
+                    DB::raw("(SELECT file_url FROM files WHERE file_kind = 'POST' AND ref_id = p.post_id ORDER BY file_id ASC LIMIT 1) AS thumbnail"),
                 ]);
         }
 

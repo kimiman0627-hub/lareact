@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Banner\Banner as BannerModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -108,6 +109,43 @@ class HandleInertiaRequests extends Middleware
                 ->get(['board_id', 'board_name', 'category'])
                 ->toArray(),
 
+            // 환율 (캐시 30분, 외부 API 실패 시 null → 위젯 미노출)
+            'exchangeRates' => $this->safeCache('exchange.rates', 1800, function () {
+                try {
+                    $res = Http::timeout(4)->get('https://api.frankfurter.app/latest?base=USD&symbols=KRW,EUR,JPY');
+                    if (!$res->ok()) return null;
+
+                    $data  = $res->json();
+                    $rates = $data['rates'] ?? [];
+                    $krw   = $rates['KRW'] ?? null;
+                    $eur   = $rates['EUR'] ?? null;
+                    $jpy   = $rates['JPY'] ?? null;
+
+                    if (!$krw || !$eur || !$jpy) return null;
+
+                    return [
+                        'USD'  => (int) round($krw),
+                        'EUR'  => (int) round($krw / $eur),
+                        'JPY'  => round($krw / $jpy * 100, 1),
+                        'date' => $data['date'] ?? null,
+                    ];
+                } catch (\Throwable) {
+                    return null;
+                }
+            }),
+
+            // 사이드바 공지사항 (캐시 10분)
+            'sideNotices' => $this->safeCache('side.notices', 600, fn () =>
+                DB::table('posts')
+                    ->where('post_status', 'ACTIVE')
+                    ->where('post_category', 'notice')
+                    ->orderByDesc('is_notice')
+                    ->orderByDesc('created_at')
+                    ->limit(3)
+                    ->get(['post_id', 'title'])
+                    ->toArray()
+            ),
+
             // 사이드바 배너 (캐시 5분, Redis 장애 시 DB 직접 조회로 폴백)
             'sideBanners1' => $this->safeCache('banners.side1', 300, fn () =>
                 BannerModel::getActiveByPosition('SIDE1')
@@ -124,9 +162,22 @@ class HandleInertiaRequests extends Middleware
                         ->whereDate('created_at', today())
                         ->count()
                 ),
-                'total_members' => $this->safeCache('stats.total_members', 180, fn () =>
+                // 전체 회원 수 (주석 처리)
+                // 'total_members' => $this->safeCache('stats.total_members', 180, fn () =>
+                //     DB::table('users')
+                //         ->whereNot('user_role', 'TEST')
+                //         ->count()
+                // ),
+                'today_visitors' => $this->safeCache('stats.today_visitors', 180, fn () =>
                     DB::table('users')
                         ->whereNot('user_role', 'TEST')
+                        ->where(function ($q) {
+                            $q->whereDate('last_login_at', today())
+                              ->orWhere(function ($q2) {
+                                  $q2->whereNull('last_login_at')
+                                     ->whereDate('created_at', today());
+                              });
+                        })
                         ->count()
                 ),
                 'online_users'  => $this->safeCache('stats.online_users', 60, fn () =>

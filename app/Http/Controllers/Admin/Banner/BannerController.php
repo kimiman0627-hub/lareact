@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Banner\Banner;
 use App\Lib\Banner\Banner as BannerLib;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -87,6 +88,13 @@ class BannerController extends Controller
       
     }
 
+    private function clearBannerCache(): void
+    {
+        foreach (array_keys(config('config.banner_positions')) as $position) {
+            Cache::forget('banners.' . strtolower($position));
+        }
+    }
+
     public function store(Request $request)
     {
         $params = $this->validateBanner($request);
@@ -99,6 +107,7 @@ class BannerController extends Controller
             return $this->error('배너를 생성할 수 없습니다.', null, 500);
         }
 
+        $this->clearBannerCache();
         return redirect()->route('admin.banners.index')->with('message', '배너가 등록되었습니다.');
     }
 
@@ -115,6 +124,7 @@ class BannerController extends Controller
             return $this->error('배너를 수정할 수 없습니다.', null, 404);
         }
 
+        $this->clearBannerCache();
         return redirect()->route('admin.banners.index')->with('message', '배너가 수정되었습니다.');
     }
 
@@ -140,6 +150,7 @@ class BannerController extends Controller
             return $this->error('배너를 삭제할 수 없습니다.', null, 404);
         }
 
+        $this->clearBannerCache();
         return redirect()->route('admin.banners.index')->with('message', '배너가 삭제되었습니다.');
     }
 
@@ -178,6 +189,7 @@ class BannerController extends Controller
             $banners[$targetIndex]->save();
         });
 
+        $this->clearBannerCache();
         return redirect()->route('admin.banners.index')->with('message', '순서가 변경되었습니다.');
     }
 }

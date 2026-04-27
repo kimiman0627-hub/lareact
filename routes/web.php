@@ -15,7 +15,34 @@ use App\Http\Controllers\Service\Board\ScrapController;
 use App\Http\Controllers\Service\SitemapController;
 use App\Http\Controllers\Service\File\FileProxyController;
 use App\Http\Controllers\Service\File\FileController;
+use App\Http\Controllers\Service\Banner\BannerStatController;
+use App\Http\Controllers\Service\StockController;
+use App\Http\Controllers\Service\PolicyController;
 use App\Http\Middleware\HandleInertiaRequests;
+
+// 가상화폐 시세 API — Upbit CORS 우회 프록시 (throttle: 분당 30회)
+Route::withoutMiddleware([HandleInertiaRequests::class])
+    ->middleware('throttle:30,1')
+    ->get('/api/crypto', [StockController::class, 'crypto'])
+    ->name('api.crypto');
+
+// 주식 시세 API (Inertia 미들웨어 제외 — JSON 응답, throttle: 분당 30회)
+Route::withoutMiddleware([HandleInertiaRequests::class])
+    ->middleware('throttle:30,1')
+    ->get('/api/stocks', [StockController::class, 'index'])
+    ->name('api.stocks');
+
+// 금/은 시세 API (throttle: 분당 30회)
+Route::withoutMiddleware([HandleInertiaRequests::class])
+    ->middleware('throttle:30,1')
+    ->get('/api/metals', [StockController::class, 'metals'])
+    ->name('api.metals');
+
+// 환율 API (throttle: 분당 30회)
+Route::withoutMiddleware([HandleInertiaRequests::class])
+    ->middleware('throttle:30,1')
+    ->get('/api/exchange-rates', [StockController::class, 'exchangeRates'])
+    ->name('api.exchange-rates');
 
 // NCP 비공개 버킷 파일 프록시
 // - HandleInertiaRequests 제외: JSON 응답이 아닌 파일 스트림
@@ -72,6 +99,17 @@ Route::get('/classic', [MainController::class, 'classic']);
 Route::get('/inquiry', [InquiryController::class, 'create'])->name('inquiry.create');
 Route::post('/inquiry', [InquiryController::class, 'store'])->name('inquiry.store');
 Route::get('/inquiry/complete', [InquiryController::class, 'complete'])->name('inquiry.complete');
+
+// 배너 통계 기록 (throttle: IP당 분당 120회)
+Route::middleware('throttle:120,1')->group(function () {
+    Route::post('/banner/{id}/impression', [BannerStatController::class, 'impression'])->name('banner.impression');
+    Route::post('/banner/{id}/click',      [BannerStatController::class, 'click'])->name('banner.click');
+});
+
+// 정책/소개 페이지
+Route::get('/about',   [PolicyController::class, 'about'])->name('about');
+Route::get('/privacy', [PolicyController::class, 'privacy'])->name('privacy');
+Route::get('/terms',   [PolicyController::class, 'terms'])->name('terms');
 
 // 페이지 보여주기
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');

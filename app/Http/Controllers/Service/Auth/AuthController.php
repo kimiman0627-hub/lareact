@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use App\Lib\Stats\StatRecorder;
+use Illuminate\Support\Facades\Cache;
 
 class AuthController extends Controller
 {
@@ -33,7 +34,9 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        $user->update(['last_login_at' => now()]);
         Auth::login($user);
+        Cache::forget('stats.today_visitors');
         StatRecorder::recordRegister();
         return redirect('/');
     }
@@ -54,6 +57,8 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+            Auth::user()->update(['last_login_at' => now()]);
+            Cache::forget('stats.today_visitors');
             StatRecorder::recordLogin();
             return redirect()->intended('/');
         }

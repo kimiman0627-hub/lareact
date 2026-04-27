@@ -9,7 +9,7 @@ function TabButton({ label, active, onClick }) {
     return (
         <button
             onClick={onClick}
-            className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition ${
+            className={`px-3 sm:px-5 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition whitespace-nowrap ${
                 active
                     ? "border-blue-600 text-blue-600"
                     : "border-transparent text-slate-500 hover:text-slate-700"
@@ -446,7 +446,7 @@ export default function MyPage({ tab, posts, comments, inquiries, scraps }) {
             {/* 탭 + 목록 */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 {/* 탭 헤더 */}
-                <div className="flex border-b border-gray-200 px-2">
+                <div className="flex border-b border-gray-200 px-2 overflow-x-auto scrollbar-none">
                     <TabButton
                         label="내게시글"
                         active={tab === "posts"}

@@ -105,6 +105,21 @@ PostgreSQL 사용. 마이그레이션 파일 기준으로 작성.
 
 ---
 
+## banner_daily_stats
+
+배너 일별 노출/클릭 집계. 배너가 렌더링될 때 노출 기록, IMAGE 타입 클릭 시 클릭 기록.
+
+| 컬럼 | 타입 | 옵션 | 설명 |
+|---|---|---|---|
+| id | bigint | PK, auto | |
+| banner_id | bigint | UNIQUE(banner_id, stat_date) | banners.banner_id 참조 |
+| stat_date | date | | 집계 날짜 |
+| impressions | bigint | default 0 | 노출 수 |
+| clicks | bigint | default 0 | 클릭 수 |
+| created_at / updated_at | timestamp | | |
+
+---
+
 ## post_banners
 
 게시글-배너 M:N 연결 테이블.

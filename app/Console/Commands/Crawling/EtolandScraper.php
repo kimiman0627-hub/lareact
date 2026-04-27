@@ -137,6 +137,14 @@ class EtolandScraper extends BaseScraper
 
             $contentHtml = $this->fixVideoUrls($this->cleanContent($rawHtml), self::BASE_URL);
 
+            // 텍스트 부족 게시글 스킵 (AdSense 저품질 콘텐츠 방지)
+            $textLength = $this->extractTextLength($contentHtml);
+            if ($textLength < self::MIN_TEXT_LENGTH) {
+                $this->line("  텍스트 부족 스킵 ({$textLength}자 < " . self::MIN_TEXT_LENGTH . "자): {$url}");
+                $this->incSkipped();
+                return;
+            }
+
             // view_document_address가 제거된 HTML로 새 Crawler 생성 후 이미지/비디오 수집
             $cleanNode = new Crawler($contentHtml);
             $images = $this->collectImagesEtoland($cleanNode, $boardName);

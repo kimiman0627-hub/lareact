@@ -42,7 +42,11 @@ class SitemapController extends Controller
     public function pages(): Response
     {
         $urls = [
-            ['loc' => url('/'), 'priority' => '1.0', 'changefreq' => 'daily'],
+            ['loc' => url('/'),        'priority' => '1.0', 'changefreq' => 'daily'],
+            ['loc' => url('/about'),   'priority' => '0.7', 'changefreq' => 'monthly'],
+            ['loc' => url('/privacy'), 'priority' => '0.4', 'changefreq' => 'monthly'],
+            ['loc' => url('/terms'),   'priority' => '0.4', 'changefreq' => 'monthly'],
+            ['loc' => url('/popular'), 'priority' => '0.8', 'changefreq' => 'hourly'],
         ];
 
         $boards = DB::table('boards')
