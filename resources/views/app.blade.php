@@ -12,8 +12,9 @@
         <meta name="google-adsense-account" content="ca-pub-2524436697997672" />
         <meta property="og:locale" content="ko_KR" />
         <meta property="og:site_name" content="{{ config('app.name') }}" />
-        @if(config('config.kakao_js_key'))
-        <meta name="kakao-key" content="{{ config('config.kakao_js_key') }}" />
+        @php $kakaoKey = $siteSettings['kakao_js_key'] ?? config('config.kakao_js_key', '') @endphp
+        @if($kakaoKey)
+        <meta name="kakao-key" content="{{ $kakaoKey }}" />
         @endif
         <meta name="twitter:card" content="summary_large_image" />
         @inertiaHead

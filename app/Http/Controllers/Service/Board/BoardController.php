@@ -77,7 +77,7 @@ class BoardController extends Controller
             ->first([
                 'p.post_id', 'p.user_id', 'p.title', 'p.content', 'p.is_notice',
                 'p.hits', 'p.comment_count', 'p.like_count', 'p.dislike_count',
-                'p.created_at', 'p.post_category', 'p.source',
+                'p.created_at', 'p.post_category', 'p.source', 'p.post_data',
                 'u.name as author',
                 'b.board_name', 'b.category', 'b.options as board_options',
             ]);
@@ -142,6 +142,12 @@ class BoardController extends Controller
         $boardPostsTotal = $listLib->getCount();
         $boardPosts      = $listLib->getList();
 
+        // post_data에서 summary 추출
+        $postDataArr = is_string($post->post_data) && $post->post_data
+            ? (json_decode($post->post_data, true) ?? [])
+            : [];
+        $summary = $postDataArr['summary'] ?? null;
+
         // SEO: 본문에서 description 추출 (HTML 제거 후 160자)
         $rawText    = mb_substr(trim(strip_tags($post->content)), 0, 160);
         $description = mb_strlen($rawText) >= 155 ? $rawText . '...' : $rawText;
@@ -161,6 +167,7 @@ class BoardController extends Controller
 
         return Inertia::render('Board/PostDetail', [
             'post'         => $post,
+            'summary'      => $summary,
             'isOwner'      => $isOwner,
             'boardPosts'      => $boardPosts,
             'boardPostsTotal' => $boardPostsTotal,

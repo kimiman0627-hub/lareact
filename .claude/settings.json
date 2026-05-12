@@ -19,7 +19,12 @@
       "Bash(systemctl start:*)",
       "Bash(redis-server --daemonize yes)",
       "Bash(rpm -q redis)",
-      "Bash(dpkg -l redis-server)"
+      "Bash(dpkg -l redis-server)",
+      "Bash(php -r \"echo class_exists\\('App\\\\Console\\\\Commands\\\\Crawling\\\\SummarizePosts'\\) ? 'class found' : 'not found';\")",
+      "Bash(rm /home/kim/www/lareact/.git/index.lock && echo \"삭제 완료\")"
+    ],
+    "additionalDirectories": [
+      "/home/kim/www/lareact/.git"
     ]
   }
 }

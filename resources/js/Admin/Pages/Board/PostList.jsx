@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { http } from "@/Utils/http";
 import { ajax } from "@/Utils/network";
 import { useForm, usePage, router } from "@inertiajs/react";
@@ -92,6 +92,34 @@ export default function PostIndex({
     const [isPostModalOpen, setIsPostModalOpen] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen]     = useState(false);
     const [previewPost, setPreviewPost]         = useState(null);
+
+    // Blogger 발행 상태: { [post_id]: 'loading' | 'done' | 'error' }
+    const [bloggerStatus, setBloggerStatus] = useState({});
+
+    const publishToBlogger = useCallback(async (post) => {
+        setBloggerStatus((prev) => ({ ...prev, [post.post_id]: "loading" }));
+        try {
+            const res = await fetch("/admin/blogger/publish-post", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.content ?? "",
+                },
+                body: JSON.stringify({ post_id: post.post_id }),
+            });
+            const json = await res.json();
+            if (json.success) {
+                setBloggerStatus((prev) => ({ ...prev, [post.post_id]: "done" }));
+                router.reload({ only: ["list"] });
+            } else {
+                alert("발행 실패: " + (json.output || "알 수 없는 오류"));
+                setBloggerStatus((prev) => ({ ...prev, [post.post_id]: "error" }));
+            }
+        } catch {
+            alert("발행 요청 중 오류가 발생했습니다.");
+            setBloggerStatus((prev) => ({ ...prev, [post.post_id]: "error" }));
+        }
+    }, []);
 
     const openPreview = async (post) => {
         try {
@@ -423,7 +451,7 @@ export default function PostIndex({
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-28">작성자</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-20">상태</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-36">작성일</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right w-44">관리</th>
+                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right w-56">관리</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
@@ -501,6 +529,31 @@ export default function PostIndex({
                                                     >
                                                         삭제
                                                     </button>
+                                                    {post.blogger_post_id ? (
+                                                        <a
+                                                            href={post.blogger_url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="px-2.5 py-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition"
+                                                            title="Blogger에서 보기"
+                                                        >
+                                                            <i className="fa-brands fa-blogger mr-1" />발행됨
+                                                        </a>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => publishToBlogger(post)}
+                                                            disabled={bloggerStatus[post.post_id] === "loading"}
+                                                            className="px-2.5 py-1 text-xs bg-orange-50 text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            title="Blogger에 발행"
+                                                        >
+                                                            {bloggerStatus[post.post_id] === "loading" ? (
+                                                                <i className="fa-solid fa-spinner fa-spin mr-1" />
+                                                            ) : (
+                                                                <i className="fa-brands fa-blogger mr-1" />
+                                                            )}
+                                                            Blogger
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>

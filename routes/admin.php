@@ -16,13 +16,19 @@ use App\Http\Controllers\Admin\Inquiry\InquiryController as AdminInquiryControll
 use App\Http\Controllers\Admin\Report\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\Stats\StatController;
 use App\Http\Controllers\Admin\Setting\SiteSettingController;
+use App\Http\Controllers\Admin\Setting\MenuSettingController;
+use App\Http\Controllers\Admin\Blogger\BloggerLogController;
+use App\Http\Controllers\Admin\Setting\ApiKeyController;
 use App\Http\Controllers\Admin\Setting\AdminProfileController;
 use App\Http\Controllers\Admin\AdminManager\AdminManagerController;
 
-// 관리자 
+// 관리자
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
+
+// Google OAuth 콜백 — 인증 미들웨어 밖에 두어야 Google 리다이렉트 후 세션이 유지됨
+Route::get('settings/blogger/callback', [ApiKeyController::class, 'bloggerAuthCallback'])->name('settings.blogger.callback');
 
 Route::middleware(['auth:admin', 'admin.permission'])->group(function () {
     // 관리자 로그아웃 (반드시 post 방식 권장)
@@ -77,8 +83,24 @@ Route::middleware(['auth:admin', 'admin.permission'])->group(function () {
     Route::get('stats/banners',    [AdminBannerStatController::class, 'index'])->name('stats.banners');
 
     // 사이트 설정
-    Route::get('settings/site',    [SiteSettingController::class, 'index'])->name('settings.site');
-    Route::post('settings/site',   [SiteSettingController::class, 'update'])->name('settings.site.update');
+    Route::get('settings/site',     [SiteSettingController::class, 'index'])->name('settings.site');
+    Route::post('settings/site',    [SiteSettingController::class, 'update'])->name('settings.site.update');
+
+    // 메뉴 설정
+    Route::get('settings/menu',     [MenuSettingController::class, 'index'])->name('settings.menu');
+    Route::post('settings/menu',    [MenuSettingController::class, 'update'])->name('settings.menu.update');
+
+    // Blogger 발행 로그
+    Route::get('blogger/logs',            [BloggerLogController::class, 'index'])->name('blogger.logs');
+    Route::post('blogger/publish-now',    [BloggerLogController::class, 'publishNow'])->name('blogger.publish-now');
+    Route::post('blogger/publish-post',   [BloggerLogController::class, 'publishPost'])->name('blogger.publish-post');
+    Route::delete('blogger/logs/{id}',    [BloggerLogController::class, 'destroy'])->name('blogger.logs.destroy');
+
+    // API 키 관리
+    Route::get('settings/api-keys',            [ApiKeyController::class, 'index'])->name('settings.api-keys');
+    Route::post('settings/api-keys',           [ApiKeyController::class, 'update'])->name('settings.api-keys.update');
+    Route::get('settings/blogger/auth',        [ApiKeyController::class, 'bloggerAuthStart'])->name('settings.blogger.auth');
+    Route::post('settings/blogger/disconnect', [ApiKeyController::class, 'bloggerDisconnect'])->name('settings.blogger.disconnect');
 
     // 관리자 프로필 (자기 자신)
     Route::get('settings/profile',   [AdminProfileController::class, 'index'])->name('settings.profile');

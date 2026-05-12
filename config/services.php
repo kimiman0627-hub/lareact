@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    'blogger' => [
+        'client_id'     => env('BLOGGER_CLIENT_ID'),
+        'client_secret' => env('BLOGGER_CLIENT_SECRET'),
+        'refresh_token' => env('BLOGGER_REFRESH_TOKEN'),
+        'blog_id'       => env('BLOGGER_BLOG_ID'),
+    ],
+
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+    ],
+
 ];

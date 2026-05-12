@@ -106,6 +106,16 @@ return [
                     'icon'  => 'fa-solid fa-code',
                     'route' => 'admin.settings.site',
                 ],
+                [
+                    'title' => '메뉴 설정',
+                    'icon'  => 'fa-solid fa-bars',
+                    'route' => 'admin.settings.menu',
+                ],
+                [
+                    'title' => 'API 키 관리',
+                    'icon'  => 'fa-solid fa-key',
+                    'route' => 'admin.settings.api-keys',
+                ],
             ],
         ],
         [
@@ -134,6 +144,11 @@ return [
                     'title' => '크롤링 로그',
                     'icon' => 'fa-solid fa-list',
                     'route' => 'admin.crawl-logs.index',
+                ],
+                [
+                    'title' => 'Blogger 발행 로그',
+                    'icon'  => 'fa-solid fa-rss',
+                    'route' => 'admin.blogger.logs',
                 ],
             ],
         ],

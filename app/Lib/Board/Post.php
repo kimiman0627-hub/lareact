@@ -102,6 +102,8 @@ class Post
                     P.post_status, P.post_type, P.post_category,
                     P.title, P.hits, P.comment_count, P.like_count, P.dislike_count,
                     P.is_notice, P.created_at, P.updated_at,
+                    P.post_data->>'blogger_post_id' AS blogger_post_id,
+                    P.post_data->>'blogger_url'     AS blogger_url,
                     U.email, U.name,
                     COALESCE(pb.banner_ids, '') AS banner_ids,
                     COALESCE(fi.has_image, false) AS has_image,

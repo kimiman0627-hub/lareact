@@ -10,7 +10,7 @@ function Section({ title, children }) {
     );
 }
 
-export default function Privacy() {
+export default function Privacy({ officerName = "KRLived 운영팀", officerEmail = "" }) {
     const updated = "2026년 4월 27일";
 
     return (
@@ -97,8 +97,10 @@ export default function Privacy() {
 
                 <Section title="8. 개인정보 보호책임자">
                     <div className="bg-gray-50 rounded-lg px-4 py-3 space-y-1">
-                        <p><strong>책임자:</strong> KRLived 운영팀</p>
-                        <p><strong>이메일:</strong> kimiman0627@gmail.com</p>
+                        <p><strong>책임자:</strong> {officerName}</p>
+                        {officerEmail && (
+                            <p><strong>이메일:</strong> <a href={`mailto:${officerEmail}`} className="text-blue-500 hover:underline">{officerEmail}</a></p>
+                        )}
                         <p><strong>문의:</strong> <a href="/inquiry?type=SUPPORT" className="text-blue-500 hover:underline">1:1 문의하기</a></p>
                     </div>
                     <p className="mt-3 text-xs text-slate-400">

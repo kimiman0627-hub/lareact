@@ -169,6 +169,11 @@ php artisan repair:etoland-images --post-id=26588 # 특정 게시물만
 php artisan repair:etoland-videos           # 이토랜드 동영상 문제 게시물 복구 (lazy-hidden 제거 / 상대URL 재다운로드)
 php artisan repair:etoland-videos --dry-run # 복구 대상 확인만
 php artisan repair:etoland-videos --download-external  # 이토랜드 외부 URL 동영상도 재다운로드 (실패 시 삭제)
+
+# AI 요약
+php artisan posts:summarize              # 요약 없는 크롤링 게시물 최대 20개 요약 생성
+php artisan posts:summarize --limit=50   # 한 번에 처리할 수 최대값 지정
+php artisan posts:summarize --post-id=123  # 특정 게시물만 처리
 ```
 
 ---

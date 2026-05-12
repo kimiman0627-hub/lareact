@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Service;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting\SiteSetting;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -10,12 +11,21 @@ class PolicyController extends Controller
 {
     public function privacy()
     {
-        return Inertia::render('Policy/Privacy');
+        $s = SiteSetting::allCached();
+
+        return Inertia::render('Policy/Privacy', [
+            'officerName'  => $s['privacy_officer_name']  ?? 'KRLived 운영팀',
+            'officerEmail' => $s['privacy_officer_email'] ?? '',
+        ]);
     }
 
     public function terms()
     {
-        return Inertia::render('Policy/Terms');
+        $s = SiteSetting::allCached();
+
+        return Inertia::render('Policy/Terms', [
+            'officerEmail' => $s['privacy_officer_email'] ?? '',
+        ]);
     }
 
     public function about()

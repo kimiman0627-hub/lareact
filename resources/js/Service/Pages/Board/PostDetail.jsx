@@ -446,7 +446,7 @@ function LikeBar({ postId, initialLike, initialDislike, initialUserType, useLike
     );
 }
 
-export default function PostDetail({ post, isOwner = false, boardPosts = [], boardPostsTotal = 0, boardPostsPage = 1, boardPostsPerPage = 15, comments = [], maxDepth = 2, boardOptions = {}, userLikeType = null, isScrapped = false, scrapCount = 0, prevPost = null, nextPost = null, seo = {} }) {
+export default function PostDetail({ post, summary = null, isOwner = false, boardPosts = [], boardPostsTotal = 0, boardPostsPage = 1, boardPostsPerPage = 15, comments = [], maxDepth = 2, boardOptions = {}, userLikeType = null, isScrapped = false, scrapCount = 0, prevPost = null, nextPost = null, seo = {} }) {
     const { auth } = usePage().props;
     const authUser  = auth?.user ?? null;
     const [showReport, setShowReport] = useState(false);
@@ -554,6 +554,19 @@ export default function PostDetail({ post, isOwner = false, boardPosts = [], boa
                         )}
                     </div>
                 </div>
+
+                {/* AI 요약 */}
+                {summary && (
+                    <div className="mx-5 mb-0 mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+                        <p className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-blue-400">
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            AI 요약
+                        </p>
+                        <p className="text-sm leading-relaxed text-slate-600">{summary}</p>
+                    </div>
+                )}
 
                 {/* 본문 */}
                 <div

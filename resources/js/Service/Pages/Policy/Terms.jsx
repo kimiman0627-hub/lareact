@@ -10,7 +10,7 @@ function Section({ title, children }) {
     );
 }
 
-export default function Terms() {
+export default function Terms({ officerEmail = "" }) {
     const updated = "2026년 4월 27일";
 
     return (
@@ -115,7 +115,11 @@ export default function Terms() {
 
                 <div className="bg-gray-50 rounded-lg px-4 py-3 mt-6">
                     <p className="text-sm font-semibold text-slate-700 mb-1">문의처</p>
-                    <p className="text-sm text-slate-600">이메일: kimiman0627@gmail.com</p>
+                    {officerEmail && (
+                        <p className="text-sm text-slate-600">
+                            이메일: <a href={`mailto:${officerEmail}`} className="text-blue-500 hover:underline">{officerEmail}</a>
+                        </p>
+                    )}
                     <p className="text-sm text-slate-600">
                         문의: <a href="/inquiry?type=SUPPORT" className="text-blue-500 hover:underline">1:1 문의하기</a>
                     </p>

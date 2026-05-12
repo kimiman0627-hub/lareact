@@ -91,6 +91,10 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return array_merge(parent::share($request), [
+            'flash' => [
+                'success' => $request->session()->get('success'),
+                'error'   => $request->session()->get('error'),
+            ],
             'auth' => [
                 'user' => $request->user(),
                 'admin' => $request->user('admin'), // 관리자 유저
@@ -101,13 +105,11 @@ class HandleInertiaRequests extends Middleware
                 ? $this->filterAdminMenu($request->user('admin'), config('admin.menu'))
                 : [],
 
-            // GNB 게시판 목록 (모든 페이지 공유)
-            'gnbBoards' => DB::table('boards')
-                ->where('board_status', 'ACTIVE')
-                ->orderBy('board_order')
-                ->orderBy('board_id')
-                ->get(['board_id', 'board_name', 'category'])
-                ->toArray(),
+            // GNB 네비게이션 메뉴 (관리자 설정값만 사용)
+            'navMenu' => $this->safeCache('nav_menu', 300, function () {
+                $raw = \App\Models\Setting\SiteSetting::get('nav_menu', '');
+                return $raw ? (json_decode($raw, true) ?? []) : [];
+            }),
 
             // 환율 (캐시 30분, 외부 API 실패 시 null → 위젯 미노출)
             'exchangeRates' => $this->safeCache('exchange.rates', 1800, function () {
