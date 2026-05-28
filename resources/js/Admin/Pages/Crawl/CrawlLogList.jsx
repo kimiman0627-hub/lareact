@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { router, usePage } from "@inertiajs/react";
 import AdminLayout from "@/Admin/Layouts/AdminLayout";
 import Pagination from "@/Admin/Components/Common/Pagination";
-import axios from "axios";
+import { ajax } from "@/Utils/network";
 
 const STATUS_BADGE = {
     RUNNING: { label: "실행중",  cls: "bg-blue-100 text-blue-700 border-blue-200"  },
@@ -48,8 +48,8 @@ function ErrorModal({ logId, onClose }) {
     const [loading, setLoading] = useState(true);
 
     React.useEffect(() => {
-        axios.get(`/admin/crawl-logs/${logId}`)
-            .then(res => setErrors(res.data.error_log ?? []))
+        ajax.get(`/admin/crawl-logs/${logId}`)
+            .then(data => setErrors(data.error_log ?? []))
             .catch(() => setErrors([]))
             .finally(() => setLoading(false));
     }, [logId]);

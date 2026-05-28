@@ -7,7 +7,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { ko } from "date-fns/locale";
 import { format } from "date-fns";
 import Pagination from "@/Admin/Components/Common/Pagination";
-import axios from "axios";
+import { ajax } from "@/Utils/network";
 
 // ─── 공통 유틸 ──────────────────────────────────────────────────────
 function formatDate(str) {
@@ -83,8 +83,8 @@ function PostsTab({ userId }) {
 
     const load = useCallback((page = 1) => {
         setState(s => ({ ...s, loading: true }));
-        axios.get(`/admin/users/${userId}/activities`, { params: { type: "posts", page } })
-            .then(r => setState({ ...r.data, loading: false }))
+        ajax.get(`/admin/users/${userId}/activities`, { type: "posts", page })
+            .then(data => setState({ ...data, loading: false }))
             .catch(() => setState(s => ({ ...s, loading: false })));
     }, [userId]);
 
@@ -132,8 +132,8 @@ function CommentsTab({ userId }) {
 
     const load = useCallback((page = 1) => {
         setState(s => ({ ...s, loading: true }));
-        axios.get(`/admin/users/${userId}/activities`, { params: { type: "comments", page } })
-            .then(r => setState({ ...r.data, loading: false }))
+        ajax.get(`/admin/users/${userId}/activities`, { type: "comments", page })
+            .then(data => setState({ ...data, loading: false }))
             .catch(() => setState(s => ({ ...s, loading: false })));
     }, [userId]);
 
@@ -176,8 +176,8 @@ function InquiriesTab({ userId }) {
 
     const load = useCallback((page = 1) => {
         setState(s => ({ ...s, loading: true }));
-        axios.get(`/admin/users/${userId}/activities`, { params: { type: "inquiries", page } })
-            .then(r => setState({ ...r.data, loading: false }))
+        ajax.get(`/admin/users/${userId}/activities`, { type: "inquiries", page })
+            .then(data => setState({ ...data, loading: false }))
             .catch(() => setState(s => ({ ...s, loading: false })));
     }, [userId]);
 
@@ -231,9 +231,8 @@ function DetailModal({ userId, onClose }) {
     });
 
     useEffect(() => {
-        axios.get(`/admin/users/${userId}`)
-            .then(res => {
-                const u = res.data;
+        ajax.get(`/admin/users/${userId}`)
+            .then(u => {
                 setDetail(u);
                 setData({ name: u.name, email: u.email, user_role: u.user_role ?? "USER", password: "" });
             })

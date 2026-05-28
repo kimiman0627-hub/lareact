@@ -93,6 +93,7 @@ app/
 │   ├── Banner/          # 배너 모델
 │   ├── Board/           # 게시판 모델
 │   ├── File/            # 파일 모델
+│   ├── Lottery/         # 로또 모델
 │   └── User/            # 유저 모델
 routes/
 ├── web.php              # 일반 라우트 (/, /board/{category}, /post/{id}, /sitemap.xml)
@@ -113,10 +114,12 @@ resources/
 │   ├── service.jsx      # 서비스 앱 엔트리포인트
 │   ├── Admin/           # 관리자 React 컴포넌트
 │   ├── Service/
-│   │   ├── Pages/Main/Index.jsx       # 메인페이지
-│   │   ├── Pages/Board/BoardList.jsx  # 게시판 목록 (/board/{category})
-│   │   ├── Pages/Board/PostDetail.jsx # 게시글 상세 (/post/{id})
-│   │   ├── Pages/User/MyPage.jsx      # 마이페이지 (/mypage?tab=posts|comments)
+│   │   ├── Pages/Main/Index.jsx             # 메인페이지
+│   │   ├── Pages/Board/BoardList.jsx        # 게시판 목록 (/board/{category})
+│   │   ├── Pages/Board/PostDetail.jsx       # 게시글 상세 (/post/{id})
+│   │   ├── Pages/User/MyPage.jsx            # 마이페이지 (/mypage?tab=posts|comments)
+│   │   ├── Pages/Lottery/Lotto.jsx          # 로또 당첨번호 (/lottery/lotto)
+│   │   ├── Pages/Stock/StockPage.jsx        # 주식 시세 상세 (/stock)
 │   │   └── ...기타 컴포넌트/레이아웃
 │   └── Utils/           # 공통 유틸리티
 ├── css/
@@ -174,6 +177,18 @@ php artisan repair:etoland-videos --download-external  # 이토랜드 외부 URL
 php artisan posts:summarize              # 요약 없는 크롤링 게시물 최대 20개 요약 생성
 php artisan posts:summarize --limit=50   # 한 번에 처리할 수 최대값 지정
 php artisan posts:summarize --post-id=123  # 특정 게시물만 처리
+
+# 로또 당첨번호 동기화
+php artisan lotto:sync              # 전체/증분 동기화 (DB에 없는 회차 일괄 적재)
+php artisan lotto:sync --dry-run    # 저장 대상 확인만 (실제 저장 없음)
+
+# Threads 발행
+php artisan threads:publish              # 자동 발행 (활성화 여부 체크)
+php artisan threads:publish --force      # 활성화 여부 무관하게 강제 실행
+php artisan threads:publish --dry-run    # 대상 확인만 (실제 발행 없음)
+php artisan threads:publish --post-id=123            # 특정 게시물 단건 발행
+php artisan threads:publish --post-id=123 --text="커스텀 텍스트"  # 직접 텍스트 지정
+php artisan threads:publish --limit=5 --min-hits=100 --days=3     # 옵션 조합
 ```
 
 ---

@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\Stats\StatController;
 use App\Http\Controllers\Admin\Setting\SiteSettingController;
 use App\Http\Controllers\Admin\Setting\MenuSettingController;
 use App\Http\Controllers\Admin\Blogger\BloggerLogController;
+use App\Http\Controllers\Admin\Threads\ThreadsLogController;
 use App\Http\Controllers\Admin\Setting\ApiKeyController;
 use App\Http\Controllers\Admin\Setting\AdminProfileController;
 use App\Http\Controllers\Admin\AdminManager\AdminManagerController;
@@ -27,8 +28,11 @@ use App\Http\Controllers\Admin\AdminManager\AdminManagerController;
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 
-// Google OAuth 콜백 — 인증 미들웨어 밖에 두어야 Google 리다이렉트 후 세션이 유지됨
+// OAuth 콜백 — 인증 미들웨어 밖에 두어야 리다이렉트 후 세션이 유지됨
 Route::get('settings/blogger/callback', [ApiKeyController::class, 'bloggerAuthCallback'])->name('settings.blogger.callback');
+Route::get('settings/threads/callback', [ApiKeyController::class, 'threadsAuthCallback'])->name('settings.threads.callback');
+Route::post('settings/threads/deauthorize', fn() => response()->json(['success' => true]))->name('settings.threads.deauthorize');
+Route::post('settings/threads/delete',      fn() => response()->json(['success' => true]))->name('settings.threads.delete');
 
 Route::middleware(['auth:admin', 'admin.permission'])->group(function () {
     // 관리자 로그아웃 (반드시 post 방식 권장)
@@ -96,11 +100,20 @@ Route::middleware(['auth:admin', 'admin.permission'])->group(function () {
     Route::post('blogger/publish-post',   [BloggerLogController::class, 'publishPost'])->name('blogger.publish-post');
     Route::delete('blogger/logs/{id}',    [BloggerLogController::class, 'destroy'])->name('blogger.logs.destroy');
 
+    // Threads 발행 로그
+    Route::get('threads/logs',             [ThreadsLogController::class, 'index'])->name('threads.logs');
+    Route::post('threads/publish-now',     [ThreadsLogController::class, 'publishNow'])->name('threads.publish-now');
+    Route::post('threads/publish-post',    [ThreadsLogController::class, 'publishPost'])->name('threads.publish-post');
+    Route::post('threads/preview-text',    [ThreadsLogController::class, 'previewText'])->name('threads.preview-text');
+    Route::delete('threads/logs/{id}',     [ThreadsLogController::class, 'destroy'])->name('threads.logs.destroy');
+
     // API 키 관리
     Route::get('settings/api-keys',            [ApiKeyController::class, 'index'])->name('settings.api-keys');
     Route::post('settings/api-keys',           [ApiKeyController::class, 'update'])->name('settings.api-keys.update');
     Route::get('settings/blogger/auth',        [ApiKeyController::class, 'bloggerAuthStart'])->name('settings.blogger.auth');
     Route::post('settings/blogger/disconnect', [ApiKeyController::class, 'bloggerDisconnect'])->name('settings.blogger.disconnect');
+    Route::get('settings/threads/auth',        [ApiKeyController::class, 'threadsAuthStart'])->name('settings.threads.auth');
+    Route::post('settings/threads/disconnect', [ApiKeyController::class, 'threadsDisconnect'])->name('settings.threads.disconnect');
 
     // 관리자 프로필 (자기 자신)
     Route::get('settings/profile',   [AdminProfileController::class, 'index'])->name('settings.profile');

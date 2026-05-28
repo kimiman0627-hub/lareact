@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { router } from "@inertiajs/react";
 import AdminLayout from "@/Admin/Layouts/AdminLayout";
 import Pagination from "@/Admin/Components/Common/Pagination";
-import axios from "axios";
+import { ajax } from "@/Utils/network";
 
 const REASON_LABEL = {
     SPAM:    { label: "스팸/도배",   cls: "bg-yellow-100 text-yellow-700 border-yellow-200" },
@@ -30,7 +30,7 @@ function StatusSelect({ id, current }) {
         const next = e.target.value;
         setValue(next);
         setSaving(true);
-        axios.patch(`/admin/reports/${id}`, { status: next })
+        ajax.patch(`/admin/reports/${id}`, { status: next })
             .finally(() => setSaving(false));
     }
 

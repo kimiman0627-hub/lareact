@@ -8,19 +8,41 @@ use Illuminate\Support\Facades\Http;
 
 class StockController extends Controller
 {
+    public function page()
+    {
+        return inertia('Stock/StockPage', [
+            'seo' => [
+                'title'       => '주식 시세 | 코스닥 · 나스닥 실시간',
+                'description' => '코스닥, 나스닥 주요 종목 실시간 시세 · 등락률 · 거래대금을 한눈에 확인하세요.',
+                'canonical'   => url('/stock'),
+            ],
+        ]);
+    }
+
     public function index()
     {
         $data = Cache::remember('stocks.all', 60, fn () => [
-            'kosdaq'     => $this->fetchKosdaq(),
-            'nasdaq'     => $this->fetchNasdaq(),
+            'kosdaq'     => $this->fetchKosdaq(5),
+            'nasdaq'     => $this->fetchNasdaq(5),
             'updated_at' => now()->toIso8601String(),
         ]);
 
         return response()->json($data);
     }
 
-    // ── KOSDAQ: 네이버 금융 모바일 API (시가총액 상위 30 → 거래대금 내림차순 상위 5) ──
-    private function fetchKosdaq(): array
+    public function detail()
+    {
+        $data = Cache::remember('stocks.detail', 60, fn () => [
+            'kosdaq'     => $this->fetchKosdaq(20),
+            'nasdaq'     => $this->fetchNasdaq(20),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+
+        return response()->json($data);
+    }
+
+    // ── KOSDAQ: 네이버 금융 모바일 API (시가총액 상위 → 거래대금 내림차순) ──
+    private function fetchKosdaq(int $limit): array
     {
         try {
             $res = Http::timeout(5)
@@ -30,14 +52,14 @@ class StockController extends Controller
                 ])
                 ->get('https://m.stock.naver.com/api/stocks/marketValue/KOSDAQ', [
                     'page'     => 1,
-                    'pageSize' => 30,
+                    'pageSize' => max(100, $limit * 5),
                 ]);
 
             if (!$res->ok()) return [];
 
             return collect($res->json()['stocks'] ?? [])
                 ->sortByDesc(fn ($s) => (int) str_replace(',', '', $s['accumulatedTradingValue'] ?? '0'))
-                ->take(5)
+                ->take($limit)
                 ->values()
                 ->map(fn ($s) => [
                     'name'      => $s['stockName'] ?? '',
@@ -53,7 +75,7 @@ class StockController extends Controller
     }
 
     // ── NASDAQ: Yahoo Finance screener (most active, 거래대금 기준) ──────
-    private function fetchNasdaq(): array
+    private function fetchNasdaq(int $limit): array
     {
         try {
             $res = Http::timeout(5)
@@ -63,7 +85,7 @@ class StockController extends Controller
                 ])
                 ->get('https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved', [
                     'scrIds' => 'most_actives',
-                    'count'  => 20,
+                    'count'  => max(100, $limit * 5),
                     'region' => 'US',
                     'lang'   => 'en-US',
                 ]);
@@ -72,11 +94,11 @@ class StockController extends Controller
 
             $quotes = $res->json('finance.result.0.quotes') ?? [];
 
-            // NASDAQ 거래소만 필터 → 거래대금(가격×거래량) 내림차순 상위 5
+            // NASDAQ 거래소만 필터 → 거래대금(가격×거래량) 내림차순
             return collect($quotes)
                 ->filter(fn ($q) => in_array($q['exchange'] ?? '', ['NMS', 'NGM', 'NCM']))
                 ->sortByDesc(fn ($q) => ($q['regularMarketVolume'] ?? 0) * ($q['regularMarketPrice'] ?? 0))
-                ->take(5)
+                ->take($limit)
                 ->values()
                 ->map(fn ($q) => [
                     'name'      => $q['shortName'] ?? $q['symbol'] ?? '',

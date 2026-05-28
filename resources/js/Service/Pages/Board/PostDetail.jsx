@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Head, Link, useForm, usePage, router } from "@inertiajs/react";
 import ServiceLayout from "@/Service/Layouts/ServiceLayout";
 import { timeAgo, fmtHits } from "@/Service/Components/Board/BoardCard";
-import axios from "axios";
+import { ajax } from "@/Utils/network";
 import ReportModal from "@/Service/Components/Board/ReportModal";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
@@ -194,6 +194,7 @@ function ShareButton({ title, ogImage }) {
                 if (!window.Kakao.isInitialized()) {
                     window.Kakao.init(appKey);
                 }
+                console.log('[Kakao share] URL:', currentUrl);
                 const shareParams = ogImage
                     ? {
                         objectType: 'feed',
@@ -356,9 +357,9 @@ function ScrapButton({ postId, initialScrapped, initialCount, authUser }) {
         if (loading) return;
         setLoading(true);
         try {
-            const res = await axios.post(`/post/${postId}/scrap`);
-            setScrapped(res.data.scrapped);
-            setCount(res.data.count);
+            const data = await ajax.post(`/post/${postId}/scrap`);
+            setScrapped(data.scrapped);
+            setCount(data.count);
         } finally {
             setLoading(false);
         }
@@ -399,10 +400,10 @@ function LikeBar({ postId, initialLike, initialDislike, initialUserType, useLike
         if (loading) return;
         setLoading(true);
         try {
-            const res = await axios.post(`/post/${postId}/like`, { type });
-            setLikeCount(res.data.like_count);
-            setDislikeCount(res.data.dislike_count);
-            setUserType(res.data.user_type);
+            const data = await ajax.post(`/post/${postId}/like`, { type });
+            setLikeCount(data.like_count);
+            setDislikeCount(data.dislike_count);
+            setUserType(data.user_type);
         } finally {
             setLoading(false);
         }

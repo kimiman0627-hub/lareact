@@ -46,7 +46,9 @@ class SitemapController extends Controller
             ['loc' => url('/about'),   'priority' => '0.7', 'changefreq' => 'monthly'],
             ['loc' => url('/privacy'), 'priority' => '0.4', 'changefreq' => 'monthly'],
             ['loc' => url('/terms'),   'priority' => '0.4', 'changefreq' => 'monthly'],
-            ['loc' => url('/popular'), 'priority' => '0.8', 'changefreq' => 'hourly'],
+            ['loc' => url('/popular'),       'priority' => '0.8', 'changefreq' => 'hourly'],
+            ['loc' => url('/lottery/lotto'), 'priority' => '0.7', 'changefreq' => 'weekly'],
+            ['loc' => url('/stock'),         'priority' => '0.7', 'changefreq' => 'daily'],
         ];
 
         $boards = DB::table('boards')

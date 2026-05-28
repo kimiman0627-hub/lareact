@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import { ajax } from "@/Utils/network";
 
 const REASONS = [
     { value: "SPAM",    label: "스팸/도배" },
@@ -20,7 +20,7 @@ export default function ReportModal({ postId, onClose }) {
         setLoading(true);
         setError("");
         try {
-            await axios.post(`/post/${postId}/report`, { reason, detail: detail || null });
+            await ajax.post(`/post/${postId}/report`, { reason, detail: detail || null });
             setDone(true);
         } catch (err) {
             setError(err.response?.data?.message ?? "신고 중 오류가 발생했습니다.");

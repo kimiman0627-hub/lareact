@@ -150,6 +150,11 @@ return [
                     'icon'  => 'fa-solid fa-rss',
                     'route' => 'admin.blogger.logs',
                 ],
+                [
+                    'title' => 'Threads 발행 로그',
+                    'icon'  => 'fa-brands fa-threads',
+                    'route' => 'admin.threads.logs',
+                ],
             ],
         ],
     ],

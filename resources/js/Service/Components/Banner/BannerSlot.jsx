@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import axios from "axios";
+import { ajax } from "@/Utils/network";
 import BannerRenderer from "./BannerRenderer";
 
 function recordImpression(bannerId) {
@@ -8,7 +8,7 @@ function recordImpression(bannerId) {
     if (navigator.sendBeacon) {
         navigator.sendBeacon(url);
     } else {
-        axios.post(url).catch(() => {});
+        ajax.post(url).catch(() => {});
     }
 }
 

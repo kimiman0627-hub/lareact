@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { router } from "@inertiajs/react";
 import AdminLayout from "@/Admin/Layouts/AdminLayout";
 import Pagination from "@/Admin/Components/Common/Pagination";
-import axios from "axios";
+import { ajax } from "@/Utils/network";
 
 const TYPE_LABEL = {
     SUPPORT:     { label: "1:1 문의",  cls: "bg-blue-100 text-blue-700 border-blue-200" },
@@ -38,17 +38,17 @@ function DetailModal({ id, onClose }) {
     const [done, setDone]       = useState(false);
 
     React.useEffect(() => {
-        axios.get(`/admin/inquiries/${id}`).then((res) => {
-            setInquiry(res.data);
-            setAnswer(res.data.answer ?? "");
-            setStatus(res.data.status === "PENDING" ? "ANSWERED" : res.data.status);
+        ajax.get(`/admin/inquiries/${id}`).then((data) => {
+            setInquiry(data);
+            setAnswer(data.answer ?? "");
+            setStatus(data.status === "PENDING" ? "ANSWERED" : data.status);
         });
     }, [id]);
 
     function handleSave() {
         if (!answer.trim()) return;
         setSaving(true);
-        axios.post(`/admin/inquiries/${id}/answer`, { answer, status })
+        ajax.post(`/admin/inquiries/${id}/answer`, { answer, status })
             .then(() => { setDone(true); router.reload({ only: ["list"] }); })
             .finally(() => setSaving(false));
     }

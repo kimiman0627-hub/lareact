@@ -18,6 +18,7 @@ use App\Http\Controllers\Service\File\FileController;
 use App\Http\Controllers\Service\Banner\BannerStatController;
 use App\Http\Controllers\Service\StockController;
 use App\Http\Controllers\Service\PolicyController;
+use App\Http\Controllers\Service\Lottery\LottoController;
 use App\Http\Middleware\HandleInertiaRequests;
 
 // 가상화폐 시세 API — Upbit CORS 우회 프록시 (throttle: 분당 30회)
@@ -31,6 +32,12 @@ Route::withoutMiddleware([HandleInertiaRequests::class])
     ->middleware('throttle:30,1')
     ->get('/api/stocks', [StockController::class, 'index'])
     ->name('api.stocks');
+
+// 주식 시세 상세 API — 상위 20개 (페이지 전용)
+Route::withoutMiddleware([HandleInertiaRequests::class])
+    ->middleware('throttle:30,1')
+    ->get('/api/stocks/detail', [StockController::class, 'detail'])
+    ->name('api.stocks.detail');
 
 // 금/은 시세 API (throttle: 분당 30회)
 Route::withoutMiddleware([HandleInertiaRequests::class])
@@ -120,3 +127,13 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// 주식 시세 페이지
+Route::get('/stock', [StockController::class, 'page'])->name('stock');
+
+//
+Route::get('/lottery/lotto', [LottoController::class, 'index'])->name('lottery.lotto');
+
+// 로또 당첨번호 API — DB 조회 기반
+Route::withoutMiddleware([HandleInertiaRequests::class])
+    ->get('/api/lottery/lotto/results', [LottoController::class, 'results'])
+    ->name('api.lottery.lotto.results');

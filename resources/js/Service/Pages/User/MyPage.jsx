@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, router, usePage, useForm } from "@inertiajs/react";
-import axios from "axios";
+import { ajax } from "@/Utils/network";
 import ServiceLayout from "@/Service/Layouts/ServiceLayout";
 import Pagination from "@/Service/Components/Common/Pagination";
 import { timeAgo } from "@/Service/Components/Board/BoardCard";
@@ -146,7 +146,7 @@ function InquiryDetailModal({ id, onClose }) {
     const [detail, setDetail] = useState(null);
 
     useEffect(() => {
-        axios.get(`/mypage/inquiry/${id}`).then((res) => setDetail(res.data));
+        ajax.get(`/mypage/inquiry/${id}`).then((data) => setDetail(data));
     }, [id]);
 
     return (

@@ -178,16 +178,7 @@ class PublishToBlogger extends Command
         $postUrl  = $siteUrl . '/post/' . $post->post_id;
         $siteName = SiteSetting::get('site_name', config('app.name', $siteUrl));
 
-        $footer  = '<hr style="margin:32px 0;border:none;border-top:1px solid #e5e7eb;">';
-        $footer .= '<div style="font-size:13px;color:#555;line-height:1.8;">';
-        $footer .= '📌 이 글은 <a href="' . e($postUrl) . '" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;font-weight:bold;">' . e($siteName) . '</a>에서 가져온 콘텐츠입니다.<br>';
-        $footer .= '원본 게시물: <a href="' . e($postUrl) . '" target="_blank" rel="noopener" style="color:#2563eb;">' . e($postUrl) . '</a>';
-        // if ($sourceUrl) {
-        //     $footer .= '<br>크롤링 출처: <a href="' . e($sourceUrl) . '" target="_blank" rel="noopener" style="color:#9ca3af;">' . e($sourceUrl) . '</a>';
-        // }
-        $footer .= '</div>';
-
-        return $content . $footer;
+        return $content;
     }
 
     /**

@@ -522,6 +522,207 @@ function BloggerSection({ settings }) {
     );
 }
 
+// ── Threads 섹션 ────────────────────────────────────────────────────────────
+function ThreadsSection({ settings }) {
+    const { data, setData, post, processing } = useForm({
+        threads_app_id:        settings.threads_app_id        ?? "",
+        threads_app_secret:    "",
+        threads_min_hits:      settings.threads_min_hits      ?? "50",
+        threads_limit:         settings.threads_limit         ?? "3",
+        threads_days:          settings.threads_days          ?? "7",
+        threads_enabled:       settings.threads_enabled       ?? "0",
+        threads_schedule_type: settings.threads_schedule_type ?? "daily",
+        threads_schedule_time: settings.threads_schedule_time ?? "10:00",
+    });
+    const [saved, setSaved]               = useState(false);
+    const [disconnecting, setDisconnecting] = useState(false);
+
+    function handleSubmit(e) {
+        e.preventDefault();
+        post("/admin/settings/api-keys", {
+            onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 3000); },
+        });
+    }
+
+    function handleDisconnect() {
+        if (!confirm("Threads 연결을 해제하시겠습니까?\n액세스 토큰과 User ID가 삭제됩니다.")) return;
+        setDisconnecting(true);
+        router.post("/admin/settings/threads/disconnect", {}, {
+            onFinish: () => setDisconnecting(false),
+        });
+    }
+
+    const ThreadsIcon = () => (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.75a8.29 8.29 0 004.83 1.53v-3.4a4.85 4.85 0 01-1.06-.19z"/>
+        </svg>
+    );
+
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+            <SectionHeader
+                icon={<ThreadsIcon />}
+                title="Threads 자동 발행"
+                description="조회수 높은 게시물을 Threads에 자동으로 포스팅합니다. (제목 + AI요약 + URL)"
+            />
+
+            {/* 연결 상태 */}
+            <div className={`flex items-center justify-between px-4 py-3 rounded-xl border mb-6 ${
+                settings.threads_has_token
+                    ? "bg-emerald-50 border-emerald-200"
+                    : "bg-slate-50 border-slate-200"
+            }`}>
+                <div className="flex items-center gap-2.5">
+                    {settings.threads_has_token ? (
+                        <>
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                            <span className="text-sm font-semibold text-emerald-700">Threads 연결됨</span>
+                            {settings.threads_user_id && (
+                                <span className="text-xs text-emerald-600 font-mono">— ID: {settings.threads_user_id}</span>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
+                            <span className="text-sm font-semibold text-slate-600">Threads 미연결</span>
+                        </>
+                    )}
+                </div>
+                <div className="flex items-center gap-2">
+                    {settings.threads_has_token ? (
+                        <>
+                            <a href="/admin/settings/threads/auth"
+                                className="px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-300 hover:bg-slate-100 rounded-lg transition">
+                                재연결
+                            </a>
+                            <button onClick={handleDisconnect} disabled={disconnecting}
+                                className="px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-200 hover:bg-red-50 rounded-lg transition disabled:opacity-50">
+                                {disconnecting ? "해제 중..." : "연결 해제"}
+                            </button>
+                        </>
+                    ) : (
+                        <a href="/admin/settings/threads/auth"
+                            className="flex items-center gap-1.5 px-4 py-1.5 bg-black hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                            Threads 계정 연결
+                        </a>
+                    )}
+                </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+                {/* App ID / App Secret */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <TextInput
+                        label="App ID"
+                        description="Meta for Developers → 해당 앱 → 설정 → 기본"
+                        link="https://developers.facebook.com/apps"
+                        value={data.threads_app_id}
+                        onChange={(e) => setData("threads_app_id", e.target.value)}
+                        placeholder="123456789"
+                        mono
+                    />
+                    <SecretInput
+                        label="App Secret"
+                        description="변경 시에만 입력하세요."
+                        link="https://developers.facebook.com/apps"
+                        savedText={settings.threads_has_app_secret}
+                        value={data.threads_app_secret}
+                        onChange={(e) => setData("threads_app_secret", e.target.value)}
+                        placeholder={settings.threads_has_app_secret ? "변경하지 않으면 비워두세요" : "abc123..."}
+                    />
+                </div>
+                <p className="text-[11px] text-slate-400 -mt-3">저장 후 위 "Threads 계정 연결" 버튼을 클릭하면 OAuth 인증으로 자동 토큰 발급됩니다.</p>
+
+                {/* 발행 옵션 */}
+                <div className="pt-4 border-t border-gray-100 space-y-4">
+                    <p className="text-xs font-semibold text-slate-500">발행 옵션</p>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <div>
+                            <p className="text-sm font-semibold text-slate-700">자동 발행</p>
+                            <p className="text-xs text-slate-400 mt-0.5">설정한 주기에 자동으로 게시물을 Threads에 발행합니다</p>
+                        </div>
+                        <button type="button"
+                            onClick={() => setData("threads_enabled", data.threads_enabled === "1" ? "0" : "1")}
+                            className={`relative w-11 h-6 rounded-full transition-colors ${data.threads_enabled === "1" ? "bg-black" : "bg-slate-300"}`}>
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${data.threads_enabled === "1" ? "translate-x-5" : "translate-x-0"}`} />
+                        </button>
+                    </div>
+
+                    <div className="space-y-2">
+                        <p className="text-sm font-semibold text-slate-700">발행 주기</p>
+                        <div className="flex gap-2">
+                            {[
+                                { value: "daily",  label: "하루 한 번", desc: "매일 지정 시각에 1회" },
+                                { value: "hourly", label: "매시간",     desc: "매시 지정 분에 반복" },
+                            ].map((opt) => (
+                                <button key={opt.value} type="button"
+                                    onClick={() => setData("threads_schedule_type", opt.value)}
+                                    className={`flex-1 px-3 py-2.5 rounded-xl border text-left transition ${
+                                        data.threads_schedule_type === opt.value
+                                            ? "bg-slate-900 border-slate-900 text-white"
+                                            : "bg-white border-slate-200 text-slate-500 hover:border-slate-400"
+                                    }`}>
+                                    <p className="text-sm font-semibold">{opt.label}</p>
+                                    <p className="text-[11px] mt-0.5 opacity-70">{opt.desc}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-5 max-w-sm">
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-semibold text-slate-700">
+                                {data.threads_schedule_type === "hourly" ? "발행 분 (매시 :MM)" : "발행 시각"}
+                            </label>
+                            <p className="text-xs text-slate-400">
+                                {data.threads_schedule_type === "hourly"
+                                    ? `매시 ${(data.threads_schedule_time ?? "10:00").split(":")[1]}분에 발행`
+                                    : "매일 이 시각에 자동 발행"}
+                            </p>
+                            <input type="time" value={data.threads_schedule_time}
+                                onChange={(e) => setData("threads_schedule_time", e.target.value)}
+                                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-500" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-semibold text-slate-700">기준 기간 (일)</label>
+                            <p className="text-xs text-slate-400">최근 N일 이내 게시물만 대상</p>
+                            <input type="number" min="1" max="365" value={data.threads_days}
+                                onChange={(e) => setData("threads_days", e.target.value)}
+                                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-500" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-semibold text-slate-700">1회 최대 발행 수</label>
+                            <p className="text-xs text-slate-400">한 번에 발행할 게시물 수</p>
+                            <input type="number" min="1" max="50" value={data.threads_limit}
+                                onChange={(e) => setData("threads_limit", e.target.value)}
+                                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-500" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-semibold text-slate-700">최소 조회수</label>
+                            <p className="text-xs text-slate-400">이 이상인 게시물만 발행</p>
+                            <input type="number" min="0" value={data.threads_min_hits}
+                                onChange={(e) => setData("threads_min_hits", e.target.value)}
+                                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-500" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <button type="submit" disabled={processing}
+                        className="px-5 py-2 bg-black hover:bg-slate-800 disabled:opacity-60 text-white text-sm font-bold rounded-lg transition">
+                        {processing ? "저장 중..." : "저장"}
+                    </button>
+                    <SavedBadge show={saved} />
+                </div>
+            </form>
+        </div>
+    );
+}
+
 // ── 메인 페이지 ─────────────────────────────────────────────────────────────
 export default function ApiKeys({ settings = {} }) {
     const { auth } = usePage().props;
@@ -541,6 +742,7 @@ export default function ApiKeys({ settings = {} }) {
                 <div className="space-y-6">
                     <KakaoSection settings={settings} />
                     <BloggerSection settings={settings} />
+                    <ThreadsSection settings={settings} />
                 </div>
             </div>
         </AdminLayout>

@@ -192,15 +192,12 @@ function StockWidget() {
                         </button>
                     ))}
                 </div>
-                {updatedAt && (
-                    <span className="text-[10px] text-slate-400">
-                        {updatedAt.toLocaleTimeString("ko-KR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                        })}
-                    </span>
-                )}
+                <Link
+                    href="/stock"
+                    className="text-[10px] text-slate-400 hover:text-blue-500 transition"
+                >
+                    자세히 보기
+                </Link>
             </div>
 
             {/* 컬럼 헤더 */}
