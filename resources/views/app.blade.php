@@ -19,7 +19,7 @@
         <meta name="twitter:card" content="summary_large_image" />
         @inertiaHead
         @viteReactRefresh
-        @vite(['resources/css/app.css', 'resources/js/service.jsx'])
+        @vite(['resources/css/app.css', 'resources/js/service.tsx'])
         @if(!empty($siteSettings['head_code']))
             {!! $siteSettings['head_code'] !!}
         @endif

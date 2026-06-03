@@ -10,7 +10,7 @@
         @routes
         @inertiaHead
         @viteReactRefresh
-        @vite(['resources/css/admin.css', 'resources/js/admin.jsx'])
+        @vite(['resources/css/admin.css', 'resources/js/admin.tsx'])
     </head>
     <body class="bg-gray-100">
         @inertia

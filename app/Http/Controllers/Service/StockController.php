@@ -12,8 +12,8 @@ class StockController extends Controller
     {
         return inertia('Stock/StockPage', [
             'seo' => [
-                'title'       => '주식 시세 | 코스닥 · 나스닥 실시간',
-                'description' => '코스닥, 나스닥 주요 종목 실시간 시세 · 등락률 · 거래대금을 한눈에 확인하세요.',
+                'title'       => '주식 시세 | 코스피 · 코스닥 · 나스닥 실시간',
+                'description' => '코스피, 코스닥, 나스닥 주요 종목 실시간 시세 · 등락률 · 거래대금을 한눈에 확인하세요.',
                 'canonical'   => url('/stock'),
             ],
         ]);
@@ -22,7 +22,8 @@ class StockController extends Controller
     public function index()
     {
         $data = Cache::remember('stocks.all', 60, fn () => [
-            'kosdaq'     => $this->fetchKosdaq(5),
+            'kospi'      => $this->fetchKrxMarket('KOSPI', 5),
+            'kosdaq'     => $this->fetchKrxMarket('KOSDAQ', 5),
             'nasdaq'     => $this->fetchNasdaq(5),
             'updated_at' => now()->toIso8601String(),
         ]);
@@ -33,7 +34,8 @@ class StockController extends Controller
     public function detail()
     {
         $data = Cache::remember('stocks.detail', 60, fn () => [
-            'kosdaq'     => $this->fetchKosdaq(20),
+            'kospi'      => $this->fetchKrxMarket('KOSPI', 20),
+            'kosdaq'     => $this->fetchKrxMarket('KOSDAQ', 20),
             'nasdaq'     => $this->fetchNasdaq(20),
             'updated_at' => now()->toIso8601String(),
         ]);
@@ -41,8 +43,8 @@ class StockController extends Controller
         return response()->json($data);
     }
 
-    // ── KOSDAQ: 네이버 금융 모바일 API (시가총액 상위 → 거래대금 내림차순) ──
-    private function fetchKosdaq(int $limit): array
+    // ── KOSPI / KOSDAQ: 네이버 금융 모바일 API (시가총액 상위 → 거래대금 내림차순) ──
+    private function fetchKrxMarket(string $market, int $limit): array
     {
         try {
             $res = Http::timeout(5)
@@ -50,7 +52,7 @@ class StockController extends Controller
                     'User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15',
                     'Accept'     => 'application/json',
                 ])
-                ->get('https://m.stock.naver.com/api/stocks/marketValue/KOSDAQ', [
+                ->get("https://m.stock.naver.com/api/stocks/marketValue/{$market}", [
                     'page'     => 1,
                     'pageSize' => max(100, $limit * 5),
                 ]);

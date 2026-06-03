@@ -149,15 +149,22 @@ class BoardController extends Controller
         $summary = $postDataArr['summary'] ?? null;
 
         // SEO: 본문에서 description 추출 (HTML 제거 후 160자)
-        $rawText    = mb_substr(trim(strip_tags($post->content)), 0, 160);
-        $description = mb_strlen($rawText) >= 155 ? $rawText . '...' : $rawText;
+        $rawText     = mb_substr(trim(strip_tags($post->content)), 0, 160);
+        $description = $rawText !== ''
+            ? (mb_strlen($rawText) >= 155 ? $rawText . '...' : $rawText)
+            : $post->title;
 
-        // OG 이미지: 게시글 첫 번째 첨부 이미지
+        // OG 이미지: 첨부 파일 우선, 없으면 본문 첫 번째 img src
         $ogImage = DB::table('files')
             ->where('file_kind', 'POST')
             ->where('ref_id', $id)
             ->orderBy('file_id')
             ->value('file_url');
+
+        if (!$ogImage && $post->content) {
+            preg_match('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $post->content, $imgMatch);
+            $ogImage = $imgMatch[1] ?? null;
+        }
 
         // 본인 게시물 또는 관리자 유형 회원이면 삭제 버튼 노출
         $isOwner = Auth::check() && (
