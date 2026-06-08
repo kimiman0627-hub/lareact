@@ -17,7 +17,8 @@ jobs:
         env:
           POSTGRES_DB: lareact_test
           POSTGRES_USER: kim
-          POSTGRES_PASSWORD: ""
+          POSTGRES_PASSWORD: secret
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
         options: >-
@@ -60,7 +61,7 @@ jobs:
           DB_PORT: 5432
           DB_DATABASE: lareact_test
           DB_USERNAME: kim
-          DB_PASSWORD: ""
+          DB_PASSWORD: secret
 
       - name: Run tests
         run: php artisan test
@@ -70,7 +71,7 @@ jobs:
           DB_PORT: 5432
           DB_DATABASE: lareact_test
           DB_USERNAME: kim
-          DB_PASSWORD: ""
+          DB_PASSWORD: secret
 
   deploy:
     name: Deploy to Production
