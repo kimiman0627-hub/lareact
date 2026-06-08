@@ -1,0 +1,42 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: []  # CI가 별도 workflow이므로 독립 실행; CI 통과 후 배포하려면 아래 주석 참고
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            echo "==> git pull"
+            git pull origin main
+
+            echo "==> Composer install"
+            composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+
+            echo "==> npm install & build"
+            npm ci
+            npm run build
+
+            echo "==> Artisan"
+            php artisan migrate --force
+            php artisan config:clear
+            php artisan route:clear
+            php artisan view:clear
+            php artisan cache:clear
+
+            echo "==> Done"
