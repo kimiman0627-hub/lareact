@@ -2,13 +2,22 @@
 
 namespace App\Models\Board;
 
+use Database\Factories\BoardFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 class Board extends Model
 {
+    use HasFactory;
+
     protected $primaryKey = 'board_id';
     protected $guarded = ['board_id'];
+
+    protected static function newFactory(): BoardFactory
+    {
+        return BoardFactory::new();
+    }
 
     protected $casts = [
         'options' => 'array',
