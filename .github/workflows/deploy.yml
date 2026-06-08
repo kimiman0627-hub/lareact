@@ -75,37 +75,31 @@ jobs:
 
   deploy:
     name: Deploy to Production
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script: |
-            set -e
-            cd ${{ secrets.DEPLOY_PATH }}
+      - name: Deploy
+        run: |
+          set -e
+          cd /home/kim/www/lareact
 
-            echo "==> git pull"
-            git pull origin main
+          echo "==> git pull"
+          git pull origin main
 
-            echo "==> Composer install"
-            composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+          echo "==> Composer install"
+          composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 
-            echo "==> npm install & build"
-            npm ci
-            npm run build
+          echo "==> npm install & build"
+          npm ci
+          npm run build
 
-            echo "==> Artisan"
-            php artisan migrate --force
-            php artisan config:clear
-            php artisan route:clear
-            php artisan view:clear
-            php artisan cache:clear
+          echo "==> Artisan"
+          php artisan migrate --force
+          php artisan config:clear
+          php artisan route:clear
+          php artisan view:clear
+          php artisan cache:clear
 
-            echo "==> Done"
+          echo "==> Done"
