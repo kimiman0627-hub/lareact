@@ -28,6 +28,17 @@ class PolicyController extends Controller
         ]);
     }
 
+    public function dataDelete()
+    {
+        $s = SiteSetting::allCached();
+
+        return Inertia::render('Policy/DataDeletion', [
+            'officerEmail' => $s['privacy_officer_email'] ?? '',
+            'siteName'     => $s['site_name']             ?? 'KRLived',
+            'appUrl'       => config('app.url'),
+        ]);
+    }
+
     public function about()
     {
         $stats = [

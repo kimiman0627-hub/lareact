@@ -47,9 +47,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.permission' => AdminPermission::class,
         ]);
         // sendBeacon은 CSRF 토큰을 포함할 수 없으므로 배너 통계 엔드포인트 예외 처리
+        // Meta(Threads) 서버 → 서버 콜백도 CSRF 토큰 없음
         $middleware->validateCsrfTokens(except: [
             '/banner/*/impression',
             '/banner/*/click',
+            '/admin/settings/threads/deauthorize',
+            '/admin/settings/threads/delete',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -31,8 +31,8 @@ Route::post('/login', [AuthController::class, 'login']);
 // OAuth 콜백 — 인증 미들웨어 밖에 두어야 리다이렉트 후 세션이 유지됨
 Route::get('settings/blogger/callback', [ApiKeyController::class, 'bloggerAuthCallback'])->name('settings.blogger.callback');
 Route::get('settings/threads/callback', [ApiKeyController::class, 'threadsAuthCallback'])->name('settings.threads.callback');
-Route::post('settings/threads/deauthorize', fn() => response()->json(['success' => true]))->name('settings.threads.deauthorize');
-Route::post('settings/threads/delete',      fn() => response()->json(['success' => true]))->name('settings.threads.delete');
+Route::post('settings/threads/deauthorize', [ApiKeyController::class, 'threadsDeauthorize'])->name('settings.threads.deauthorize');
+Route::post('settings/threads/delete',      [ApiKeyController::class, 'threadsDataDeletion'])->name('settings.threads.delete');
 
 Route::middleware(['auth:admin', 'admin.permission'])->group(function () {
     // 관리자 로그아웃 (반드시 post 방식 권장)

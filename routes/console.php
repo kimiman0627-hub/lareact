@@ -24,6 +24,20 @@ Schedule::command('crawl:bobaedream')->hourlyAt(20);
 // AI 요약 — 매시 5분에 최대 20개 처리
 Schedule::command('posts:summarize --limit=20')->hourlyAt(5);
 
+// Threads 자동 발행 — 매분 체크, 설정한 시각에만 실행
+Schedule::command('threads:publish --force')
+    ->everyMinute()
+    ->when(function () {
+        if (SiteSetting::get('threads_enabled', '0') !== '1') return false;
+        $type      = SiteSetting::get('threads_schedule_type', 'daily');
+        $scheduled = SiteSetting::get('threads_schedule_time', '10:00');
+        if ($type === 'hourly') {
+            [, $minute] = explode(':', $scheduled);
+            return now()->format('i') === $minute;
+        }
+        return now()->format('H:i') === $scheduled;
+    });
+
 // Blogger 자동 발행 — 매분 체크, 설정한 시각에만 실행
 Schedule::command('blogger:publish --force')
     ->everyMinute()

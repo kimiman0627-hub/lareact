@@ -461,6 +461,7 @@ export default function PostIndex({
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-24">소스</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">제목</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-28">작성자</th>
+                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-20 text-right">조회수</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-20">상태</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-36">작성일</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right w-56">관리</th>
@@ -469,7 +470,7 @@ export default function PostIndex({
                             <tbody className="divide-y divide-gray-100">
                                 {list.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={9} className="px-4 py-10 text-center text-sm text-slate-400">
+                                        <td colSpan={10} className="px-4 py-10 text-center text-sm text-slate-400">
                                             게시물이 없습니다.
                                         </td>
                                     </tr>
@@ -512,6 +513,9 @@ export default function PostIndex({
                                             </td>
                                             <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                                                 {post.name}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-500 text-right whitespace-nowrap">
+                                                {(post.hits ?? 0).toLocaleString()}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <span className={`text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap ${post.post_status === "ACTIVE" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>

@@ -82,6 +82,12 @@ class PublishToBlogger extends Command
             $blogger = $this->makeBloggerService();
         } catch (\Throwable $e) {
             $this->error('Blogger 인증 실패: ' . $e->getMessage());
+            BloggerLog::create([
+                'post_id'    => null,
+                'post_title' => '[인증 실패]',
+                'status'     => 'FAILED',
+                'message'    => $e->getMessage(),
+            ]);
             return 1;
         }
 
@@ -162,7 +168,16 @@ class PublishToBlogger extends Command
         $client->setClientId($clientId);
         $client->setClientSecret($clientSecret);
         $client->setAccessType('offline');
-        $client->refreshToken($refreshToken);
+
+        $tokenData = $client->refreshToken($refreshToken);
+
+        // refreshToken()은 실패해도 예외를 던지지 않고 에러 배열을 반환
+        if (!isset($tokenData['access_token'])) {
+            $reason = $tokenData['error_description'] ?? ($tokenData['error'] ?? 'unknown');
+            throw new \RuntimeException(
+                "Google refresh token 갱신 실패: {$reason}. 관리자 → API 키 관리에서 Google 계정을 재연결하세요."
+            );
+        }
 
         return new Blogger($client);
     }
@@ -364,6 +379,12 @@ class PublishToBlogger extends Command
             $blogger = $this->makeBloggerService();
         } catch (\Throwable $e) {
             $this->error('Blogger 인증 실패: ' . $e->getMessage());
+            BloggerLog::create([
+                'post_id'    => $post->post_id,
+                'post_title' => $post->title,
+                'status'     => 'FAILED',
+                'message'    => $e->getMessage(),
+            ]);
             return 1;
         }
 

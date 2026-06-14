@@ -61,7 +61,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                 {hasSubmenu ? (
                                     <>
                                         <button onClick={() => toggleMenu(index)}
-                                            className={`w-full flex items-center justify-between p-3 rounded hover:bg-slate-700 transition ${isMainActive ? "bg-slate-700 text-white" : ""}`}>
+                                            className={`w-full flex items-center justify-between p-3 rounded hover:bg-slate-700 transition ${isMainActive ? "bg-slate-700 text-white" : "text-slate-300"}`}>
                                             <div className="flex items-center">
                                                 <i className={`${item.icon} mr-3 w-5`}></i>
                                                 <span>{item.label}</span>
@@ -87,7 +87,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                     </>
                                 ) : (
                                     <Link href={item.route ? route(item.route) : "#"}
-                                        className={`flex items-center p-3 rounded transition ${isMainActive ? "bg-slate-700 text-white" : "hover:bg-slate-700"}`}>
+                                        className={`flex items-center p-3 rounded transition ${isMainActive ? "bg-slate-700 text-white" : "text-slate-300 hover:bg-slate-700 hover:text-white"}`}>
                                         <i className={`${item.icon} mr-3 w-5`}></i>
                                         <span>{item.label}</span>
                                     </Link>

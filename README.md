@@ -1,59 +1,86 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 커뮤니티 포털 (Laravel + React)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+광고 클릭을 통해 게시글을 열람하는 커뮤니티 포털 서비스. (개인 프로젝트)
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 기술 스택
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **백엔드**: Laravel (PHP)
+- **프론트엔드**: React + Tailwind CSS
+- **빌드 도구**: Vite
+- **DB**: PostgreSQL
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## 핵심 기능
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- 커뮤니티 게시판 (목록/작성/댓글)
+- 광고 게이트 — 게시글 열람 전 광고 클릭 유도
+- 크롤링 자동화
+- Google Blogger 자동 발행
+- 로또 당첨번호 조회
+- AI 게시글 요약 (Claude API)
+- 관리자 페이지
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## 로컬 개발 환경 설정
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+# 의존성 설치
+composer install
+npm install
 
-### Premium Partners
+# 환경변수 설정
+cp .env.example .env
+php artisan key:generate
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+# DB 마이그레이션 및 시더
+php artisan migrate
+php artisan db:seed
 
-## Contributing
+# 개발 서버 실행
+php artisan serve   # Laravel 백엔드 (http://localhost:8000)
+npm run dev         # Vite + React 프론트
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+---
 
-## Code of Conduct
+## 주요 명령어
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+# 크롤링
+php artisan crawl:dogdrip
+php artisan crawl:dcinside
+php artisan crawl:etoland
+php artisan crawl:fomos
+php artisan crawl:bobaedream
 
-## Security Vulnerabilities
+# AI 요약
+php artisan posts:summarize --limit=20
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# Google Blogger 발행
+php artisan blogger:publish --dry-run   # 대상 확인
+php artisan blogger:publish --force     # 강제 실행
 
-## License
+# Threads 발행
+php artisan threads:publish --dry-run
+php artisan threads:publish --force
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# 로또 동기화
+php artisan lotto:sync
+
+# 캐시 초기화
+php artisan config:clear && php artisan cache:clear && php artisan route:clear
+
+# 테스트
+php artisan test
+```
+
+---
+
+## 프로젝트 문서
+
+- [DB 스키마](docs/schema.md)
+- [API 목록](docs/api.md)

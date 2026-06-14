@@ -320,4 +320,94 @@ class ApiKeyController extends Controller
         return redirect()->route('admin.settings.api-keys')
             ->with('success', 'Threads 연결이 해제되었습니다.');
     }
+
+    // ── Meta 앱 사용 해제 콜백 (deauthorize) ──────────────────────────
+    // 사용자가 앱 권한을 제거할 때 Meta가 POST로 호출
+    public function threadsDeauthorize(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $payload = $this->parseMetaSignedRequest($request);
+
+        if ($payload && isset($payload['user_id'])) {
+            $userId = $payload['user_id'];
+            if ($userId === SiteSetting::get('threads_user_id')) {
+                SiteSetting::set('threads_access_token', '');
+                SiteSetting::set('threads_user_id', '');
+            }
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    // ── Meta 사용자 데이터 삭제 콜백 ──────────────────────────────────
+    // Meta 앱 심사 필수 항목: 사용자가 데이터 삭제 요청 시 호출됨
+    public function threadsDataDeletion(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $payload = $this->parseMetaSignedRequest($request);
+
+        if (!$payload || !isset($payload['user_id'])) {
+            return response()->json(['error' => 'invalid request'], 400);
+        }
+
+        $userId = $payload['user_id'];
+        $confirmationCode = hash('sha256', $userId . now()->timestamp . config('app.key'));
+
+        // 해당 유저가 연결된 계정이면 토큰 삭제
+        if ($userId === SiteSetting::get('threads_user_id')) {
+            SiteSetting::set('threads_access_token', '');
+            SiteSetting::set('threads_user_id', '');
+        }
+
+        // Threads 발행 로그에서 해당 유저 관련 기록 삭제
+        \Illuminate\Support\Facades\DB::table('threads_logs')
+            ->where('message', 'like', "%{$userId}%")
+            ->delete();
+
+        $statusUrl = url('/threads/deletion-status?id=' . $confirmationCode);
+
+        return response()->json([
+            'url'               => $statusUrl,
+            'confirmation_code' => $confirmationCode,
+        ]);
+    }
+
+    // ── 데이터 삭제 상태 확인 페이지 (Meta가 검증용으로 접근) ─────────
+    public function threadsDeletionStatus(Request $request): \Illuminate\Http\JsonResponse
+    {
+        return response()->json([
+            'status'  => 'deleted',
+            'message' => 'User data has been deleted.',
+        ]);
+    }
+
+    // ── Meta signed_request 파싱/검증 ─────────────────────────────────
+    private function parseMetaSignedRequest(Request $request): ?array
+    {
+        $signedRequest = $request->input('signed_request');
+        if (!$signedRequest) {
+            return null;
+        }
+
+        $parts = explode('.', $signedRequest, 2);
+        if (count($parts) !== 2) {
+            return null;
+        }
+
+        [$encodedSig, $encodedPayload] = $parts;
+
+        $appSecret = SiteSetting::get('threads_app_secret');
+        if (!$appSecret) {
+            return null;
+        }
+
+        // 서명 검증
+        $expectedSig = hash_hmac('sha256', $encodedPayload, $appSecret, true);
+        $decodedSig  = base64_decode(strtr($encodedSig, '-_', '+/'));
+
+        if (!hash_equals($expectedSig, $decodedSig)) {
+            return null;
+        }
+
+        $payload = json_decode(base64_decode(strtr($encodedPayload, '-_', '+/')), true);
+        return is_array($payload) ? $payload : null;
+    }
 }

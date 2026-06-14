@@ -20,6 +20,7 @@ use App\Http\Controllers\Service\StockController;
 use App\Http\Controllers\Service\PolicyController;
 use App\Http\Controllers\Service\Lottery\LottoController;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Controllers\Admin\Setting\ApiKeyController;
 
 // 가상화폐 시세 API — Upbit CORS 우회 프록시 (throttle: 분당 30회)
 Route::withoutMiddleware([HandleInertiaRequests::class])
@@ -114,9 +115,10 @@ Route::middleware('throttle:120,1')->group(function () {
 });
 
 // 정책/소개 페이지
-Route::get('/about',   [PolicyController::class, 'about'])->name('about');
-Route::get('/privacy', [PolicyController::class, 'privacy'])->name('privacy');
-Route::get('/terms',   [PolicyController::class, 'terms'])->name('terms');
+Route::get('/about',         [PolicyController::class, 'about'])->name('about');
+Route::get('/privacy',       [PolicyController::class, 'privacy'])->name('privacy');
+Route::get('/terms',         [PolicyController::class, 'terms'])->name('terms');
+Route::get('/data-deletion', [PolicyController::class, 'dataDelete'])->name('data-deletion');
 
 // 페이지 보여주기
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -137,3 +139,7 @@ Route::get('/lottery/lotto', [LottoController::class, 'index'])->name('lottery.l
 Route::withoutMiddleware([HandleInertiaRequests::class])
     ->get('/api/lottery/lotto/results', [LottoController::class, 'results'])
     ->name('api.lottery.lotto.results');
+
+// Meta 데이터 삭제 상태 확인 URL (Threads 앱 심사 필수)
+Route::get('/threads/deletion-status', [ApiKeyController::class, 'threadsDeletionStatus'])
+    ->name('threads.deletion-status');

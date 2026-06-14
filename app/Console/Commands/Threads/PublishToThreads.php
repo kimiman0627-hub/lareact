@@ -76,6 +76,12 @@ class PublishToThreads extends Command
             $service = new ThreadsService();
         } catch (\Throwable $e) {
             $this->error($e->getMessage());
+            ThreadsLog::create([
+                'post_id'    => null,
+                'post_title' => '[인증 실패]',
+                'status'     => 'FAILED',
+                'message'    => $e->getMessage(),
+            ]);
             return 1;
         }
 
@@ -144,6 +150,12 @@ class PublishToThreads extends Command
             $service = new ThreadsService();
         } catch (\Throwable $e) {
             $this->error($e->getMessage());
+            ThreadsLog::create([
+                'post_id'    => $post->post_id,
+                'post_title' => $post->title,
+                'status'     => 'FAILED',
+                'message'    => $e->getMessage(),
+            ]);
             return 1;
         }
 
