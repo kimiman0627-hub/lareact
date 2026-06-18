@@ -87,6 +87,7 @@ app/
 │   ├── Banner/          # 배너 비즈니스 로직
 │   ├── Board/           # 게시판 비즈니스 로직
 │   ├── Common/          # 공통 로직
+│   ├── Search/          # Elasticsearch 검색 서비스
 │   └── User/            # 유저 비즈니스 로직
 ├── Models/
 │   ├── Admin/           # 관리자 모델
@@ -151,6 +152,12 @@ php artisan db:seed        # 시더 실행 (AdminSeeder 포함)
 
 # 테스트
 php artisan test
+
+# Elasticsearch
+docker compose -f docker-compose.elasticsearch.yml up -d   # ES 컨테이너 시작
+docker compose -f docker-compose.elasticsearch.yml down    # ES 컨테이너 중지
+php artisan es:index-posts            # 전체 게시물 인덱싱
+php artisan es:index-posts --fresh    # 인덱스 초기화 후 재인덱싱
 
 # 캐시 초기화
 php artisan config:clear

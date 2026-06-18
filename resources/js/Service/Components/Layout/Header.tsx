@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, usePage } from "@inertiajs/react";
+import { useState } from "react";
+import { Link, router, usePage } from "@inertiajs/react";
 import type { NavLink, SharedProps } from "@/types";
 
 interface HeaderProps {
@@ -10,6 +10,7 @@ interface HeaderProps {
 export default function Header({ theme = "dark", navLinks = [] }: HeaderProps) {
     const { auth } = usePage<SharedProps>().props;
     const [open, setOpen] = useState(false);
+    const [q, setQ] = useState("");
 
     const dark = theme === "dark";
     const wrap = dark ? "bg-[#0d1b2a] text-white shadow-lg" : "bg-white text-slate-800 border-b border-gray-200 shadow-sm";
@@ -23,10 +24,17 @@ export default function Header({ theme = "dark", navLinks = [] }: HeaderProps) {
     ];
     const links = navLinks.length ? navLinks : defaultLinks;
 
+    function handleSearch(e: React.FormEvent) {
+        e.preventDefault();
+        const trimmed = q.trim();
+        if (!trimmed) return;
+        router.get("/search", { q: trimmed });
+    }
+
     return (
         <header className={`sticky top-0 z-40 ${wrap}`}>
             <div className="max-w-7xl mx-auto px-4">
-                <div className="flex items-center justify-between h-14">
+                <div className="flex items-center justify-between h-14 gap-3">
                     <Link href="/" className="flex items-center gap-1 shrink-0 select-none">
                         <span className={`text-xl font-black tracking-tight ${dark ? "text-white" : "text-slate-900"}`}>
                             COMM
@@ -34,7 +42,7 @@ export default function Header({ theme = "dark", navLinks = [] }: HeaderProps) {
                         <span className="text-xl font-black tracking-tight text-sky-500">GATE</span>
                     </Link>
 
-                    <nav className="hidden md:flex items-center gap-0.5 text-sm font-medium">
+                    <nav className="hidden md:flex items-center gap-0.5 text-sm font-medium shrink-0">
                         {links.map((l) => (
                             <Link key={l.label} href={l.href}
                                 className={`px-3 py-1.5 rounded transition ${link}`}>
@@ -43,7 +51,24 @@ export default function Header({ theme = "dark", navLinks = [] }: HeaderProps) {
                         ))}
                     </nav>
 
-                    <div className="flex items-center gap-2">
+                    <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-sm">
+                        <div className={`flex w-full rounded overflow-hidden border ${dark ? "border-white/20 bg-white/10" : "border-gray-300 bg-gray-50"}`}>
+                            <input
+                                type="text"
+                                value={q}
+                                onChange={e => setQ(e.target.value)}
+                                placeholder="검색어 입력..."
+                                className={`flex-1 px-3 py-1.5 text-sm bg-transparent outline-none placeholder:text-slate-400 ${dark ? "text-white" : "text-slate-800"}`}
+                            />
+                            <button type="submit" className={`px-3 text-slate-400 hover:text-sky-400 transition`}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+
+                    <div className="flex items-center gap-2 shrink-0">
                         {auth?.user ? (
                             <>
                                 <span className={`hidden sm:block text-sm mr-1 ${dark ? "text-slate-400" : "text-slate-500"}`}>
@@ -82,6 +107,22 @@ export default function Header({ theme = "dark", navLinks = [] }: HeaderProps) {
 
                 {open && (
                     <div className={`md:hidden border-t py-2 space-y-0.5 pb-3 ${dark ? "border-white/10" : "border-gray-200"}`}>
+                        <form onSubmit={handleSearch} className="px-3 pb-2">
+                            <div className={`flex rounded overflow-hidden border ${dark ? "border-white/20 bg-white/10" : "border-gray-300 bg-gray-50"}`}>
+                                <input
+                                    type="text"
+                                    value={q}
+                                    onChange={e => setQ(e.target.value)}
+                                    placeholder="검색어 입력..."
+                                    className={`flex-1 px-3 py-2 text-sm bg-transparent outline-none placeholder:text-slate-400 ${dark ? "text-white" : "text-slate-800"}`}
+                                />
+                                <button type="submit" className="px-3 text-slate-400 hover:text-sky-400 transition">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </form>
                         {links.map((l) => (
                             <Link key={l.label} href={l.href}
                                 className={`block px-3 py-2 text-sm rounded transition ${link}`}>
