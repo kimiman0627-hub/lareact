@@ -188,6 +188,7 @@ class DogDripScraper extends BaseScraper
                 $post->update(['content' => $currentContent]);
             }
 
+            $this->awardPostPoint($post);
             $this->incSaved();
             $this->info("  저장: [{$sourceId}] {$title} / 작성자: {$author} / 이미지: " . count($downloaded) . '/' . count($images) . '개 / 비디오: ' . count($downloadedVideos) . '/' . count($videos) . '개');
 

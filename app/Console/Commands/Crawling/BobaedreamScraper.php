@@ -211,6 +211,7 @@ class BobaedreamScraper extends BaseScraper
                 $post->update(['content' => $currentContent]);
             }
 
+            $this->awardPostPoint($post);
             $this->incSaved();
             $this->info(
                 "  저장: [{$sourceId}] {$title}" .

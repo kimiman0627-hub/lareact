@@ -11,6 +11,7 @@ use App\Models\User\User;
 use App\Models\File\File;
 use App\Models\Board\Post;
 use App\Models\Crawl\CrawlLog;
+use App\Lib\User\PointService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -168,6 +169,25 @@ abstract class BaseScraper extends Command
     protected function incFound(int $n = 1): void { $this->logFound   += $n; }
     protected function incSaved(): void            { $this->logSaved++; }
     protected function incSkipped(): void          { $this->logSkipped++; }
+
+    /**
+     * 크롤링으로 저장된 게시글에 게시판 설정 기준 포인트 지급.
+     * 게시판에 포인트 지급이 비활성화되어 있으면 자동으로 스킵.
+     */
+    protected function awardPostPoint(Post $post): void
+    {
+        $board = DB::table('boards')->where('category', $post->post_category)->first();
+        if (!$board) return;
+
+        $options = is_string($board->options) ? json_decode($board->options, true) : (array) $board->options;
+
+        PointService::earnForPost(
+            (int) $post->user_id,
+            $options,
+            $post->post_id,
+            $post->post_category
+        );
+    }
 
     /**
      * 공통 Guzzle 클라이언트 생성.

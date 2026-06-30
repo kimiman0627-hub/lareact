@@ -21,7 +21,7 @@ class BoardFactory extends Factory
             'board_layout' => 'GENERAL',
             'board_status' => 'ACTIVE',
             'category'     => fake()->unique()->slug(2),
-            'options'      => json_encode(['posts_per_page' => 20, 'comment_depth' => 2]),
+            'options'      => ['posts_per_page' => 20, 'comment_depth' => 2],
         ];
     }
 }

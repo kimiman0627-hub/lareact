@@ -30,7 +30,7 @@ class CommentController extends Controller
             ->where('category', $post->post_category)
             ->first();
 
-        $options      = $board ? json_decode($board->options ?? '{}', true) : [];
+        $options      = $board ? (is_string($board->options) ? json_decode($board->options, true) ?? [] : (array) $board->options) : [];
         $maxDepth     = (int) ($options['comment_depth'] ?? 2);
 
         $parentId = $request->input('parent_id');
