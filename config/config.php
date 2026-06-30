@@ -101,6 +101,25 @@ return [
         'comment_depth'  => 2,
     ],
 
+    // 포인트 지급/차감 타입 (양수=적립, 음수=차감)
+    'point_types' => [
+        // 적립 (+)
+        'POST_WRITE'       => '게시글 작성',
+        'COMMENT_WRITE'    => '댓글 작성',
+        'LOGIN'            => '로그인 지급',
+        'ATTENDANCE'       => '출석 체크',
+        'ATTENDANCE_BONUS' => '연속출석 보너스',
+        'AD_CLICK'         => '광고 클릭',
+        'RECOMMEND'        => '추천 받음',
+        // 차감 (-)
+        'POST_DELETE'      => '게시글 삭제',
+        'COMMENT_DELETE'   => '댓글 삭제',
+        'USE'              => '포인트 사용',
+        'EXPIRE'           => '포인트 만료',
+        // 공통
+        'ADMIN_ADJUST'     => '관리자 조정',
+    ],
+
     // 카카오 공유 JS SDK 키 (https://developers.kakao.com 에서 발급)
     'kakao_js_key' => env('KAKAO_JS_KEY', ''),
 ];

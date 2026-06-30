@@ -28,10 +28,16 @@ class BobaedreamScraper extends BaseScraper
 
     public function handle(): void
     {
+        $proxy  = env('BOBAEDREAM_PROXY');
         $client = $this->makeClient([
             'headers' => [
                 'Referer' => self::BASE_URL . '/',
             ],
+            ...($proxy ? [
+                'proxy'           => $proxy,
+                'timeout'         => 60,
+                'connect_timeout' => 30,
+            ] : []),
         ]);
 
         $this->startCrawlLog(self::SOURCE);
@@ -198,7 +204,7 @@ class BobaedreamScraper extends BaseScraper
 
             if (!empty($downloadedVideos)) {
                 $this->saveFileRecords($post->post_id, $downloadedVideos);
-                $currentContent = $this->replaceVideoUrls($currentContent, $videos, $downloadedVideos);
+                $currentContent = $this->replaceVideoUrls($currentContent, $downloadedVideos);
             }
 
             if ($currentContent !== $contentHtml) {

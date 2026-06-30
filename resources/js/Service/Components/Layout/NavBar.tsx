@@ -14,6 +14,18 @@ function DropdownItem({ item }: DropdownItemProps) {
     const leave = () => { timer.current = setTimeout(() => setOpen(false), 120); };
 
     if (!item.children?.length) {
+        if (item.new_tab) {
+            return (
+                <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 h-10 flex items-center text-white/90 hover:text-white hover:bg-white/15 transition whitespace-nowrap text-sm font-medium"
+                >
+                    {item.label}
+                </a>
+            );
+        }
         return (
             <Link
                 href={item.href}
@@ -111,6 +123,16 @@ export default function NavBar() {
                                             </div>
                                         )}
                                     </>
+                                ) : item.new_tab ? (
+                                    <a
+                                        href={item.href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block px-3 py-2 text-sm text-white/90 hover:text-white hover:bg-white/10 rounded transition"
+                                        onClick={() => setOpen(false)}
+                                    >
+                                        {item.label}
+                                    </a>
                                 ) : (
                                     <Link
                                         href={item.href}

@@ -57,7 +57,16 @@ class PublishToBlogger extends Command
             ->get(['post_id', 'title', 'content', 'post_category', 'source', 'hits', 'post_data', 'created_at']);
 
         if ($posts->isEmpty()) {
-            $this->info("발행 대상 없음 (최근 {$days}일, hits >= {$minHits}, 미발행 게시물)");
+            $msg = "발행 대상 없음 (최근 {$days}일, hits >= {$minHits}, 미발행 게시물)";
+            $this->info($msg);
+            if (!$dryRun) {
+                BloggerLog::create([
+                    'post_id'    => null,
+                    'post_title' => '[스케줄 실행 - 대상 없음]',
+                    'status'     => 'SKIPPED',
+                    'message'    => $msg,
+                ]);
+            }
             return 0;
         }
 
@@ -188,10 +197,6 @@ class PublishToBlogger extends Command
 
         $content = $this->rewriteImages($content, $post->post_id);
         $content = $this->rewriteVideoSources($content, $post->post_id);
-
-        $siteUrl  = rtrim(env('APP_URL', ''), '/');
-        $postUrl  = $siteUrl . '/post/' . $post->post_id;
-        $siteName = SiteSetting::get('site_name', config('app.name', $siteUrl));
 
         return $content;
     }

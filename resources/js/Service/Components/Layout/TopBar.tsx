@@ -59,7 +59,20 @@ export default function TopBar() {
                         {searchInput}
                     </div>
 
-                    <div className="flex-1 md:hidden" />
+                    <div className="flex-1" />
+
+                    {/* 출석체크 버튼 — 오른쪽 끝 */}
+                    <Link
+                        href="/attendance"
+                        className="shrink-0 flex items-center gap-1.5 mr-3 px-3 h-8 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 hover:border-amber-400/60 transition"
+                    >
+                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="18" rx="2" />
+                            <path d="M16 2v4M8 2v4M3 10h18" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 16l2 2 4-4" />
+                        </svg>
+                        <span className="text-xs font-semibold hidden sm:inline">출석</span>
+                    </Link>
 
                     <div className="shrink-0 lg:hidden relative" ref={dropRef}>
                         {user ? (

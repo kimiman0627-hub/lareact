@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Service\Board;
 
 use App\Http\Controllers\Controller;
+use App\Lib\User\PointService;
 use App\Models\Board\Comment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -47,7 +48,7 @@ class CommentController extends Controller
             }
         }
 
-        Comment::create([
+        $comment = Comment::create([
             'post_id'   => $postId,
             'user_id'   => Auth::id(),
             'parent_id' => $parentId,
@@ -57,6 +58,8 @@ class CommentController extends Controller
 
         DB::table('posts')->where('post_id', $postId)->increment('comment_count');
 
+        PointService::earnForComment(Auth::id(), $options, $comment->comment_id, $post->post_category);
+
         return back();
     }
 
@@ -65,6 +68,8 @@ class CommentController extends Controller
         $comment = Comment::findOrFail($commentId);
 
         if ($comment->user_id !== Auth::id()) abort(403);
+
+        PointService::revokeForComment((int) $comment->user_id, $commentId);
 
         $comment->delete();
 

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use App\Lib\Stats\StatRecorder;
+use App\Lib\User\PointService;
 use Illuminate\Support\Facades\Cache;
 
 class AuthController extends Controller
@@ -60,6 +61,7 @@ class AuthController extends Controller
             Auth::user()->update(['last_login_at' => now()]);
             Cache::forget('stats.today_visitors');
             StatRecorder::recordLogin();
+            PointService::earnForLogin(Auth::id());
             return redirect()->intended('/');
         }
 

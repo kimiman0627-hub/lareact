@@ -188,7 +188,7 @@ class DcInsideScraper extends BaseScraper
 
             if (!empty($downloadedVideos)) {
                 $this->saveFileRecords($post->post_id, $downloadedVideos);
-                $currentContent = $this->replaceVideoUrls($currentContent, $videos, $downloadedVideos);
+                $currentContent = $this->replaceVideoUrls($currentContent, $downloadedVideos);
             }
 
             if ($currentContent !== $contentHtml) {

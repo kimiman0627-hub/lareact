@@ -84,6 +84,23 @@ return [
             ],
         ],
         [
+            'label' => '포인트',
+            'icon'  => 'fa-solid fa-coins',
+            'route' => 'admin.points.index',
+            'submenu' => [
+                [
+                    'label' => '포인트 내역',
+                    'icon'  => 'fa-solid fa-list',
+                    'route' => 'admin.points.index',
+                ],
+                [
+                    'label' => '출석 내역',
+                    'icon'  => 'fa-solid fa-calendar-check',
+                    'route' => 'admin.attendances.index',
+                ],
+            ],
+        ],
+        [
             'label'      => '관리자 관리',
             'icon'       => 'fa-solid fa-user-shield',
             'route'      => 'admin.admins.index',
@@ -115,6 +132,11 @@ return [
                     'label' => 'API 키 관리',
                     'icon'  => 'fa-solid fa-key',
                     'route' => 'admin.settings.api-keys',
+                ],
+                [
+                    'label' => '포인트 설정',
+                    'icon'  => 'fa-solid fa-coins',
+                    'route' => 'admin.settings.point',
                 ],
             ],
         ],

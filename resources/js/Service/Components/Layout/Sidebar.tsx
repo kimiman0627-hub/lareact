@@ -314,6 +314,35 @@ function MetalWidget() {
     );
 }
 
+function PointWidget() {
+    const { auth } = usePage<SidebarSharedProps>().props;
+    const user = auth?.user;
+
+    if (!user) return null;
+
+    const point = user.point ?? 0;
+
+    return (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-slate-50">
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">내 포인트</span>
+                <Link href="/mypage?tab=points" className="text-[10px] text-slate-400 hover:text-blue-500 transition">내역보기</Link>
+            </div>
+            <div className="px-4 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                        <span className="text-sm">P</span>
+                    </div>
+                    <span className="text-xs text-slate-500">{user.name}님의 포인트</span>
+                </div>
+                <span className="text-base font-bold text-amber-600">
+                    {point.toLocaleString()}<span className="text-xs font-normal text-slate-400 ml-0.5">P</span>
+                </span>
+            </div>
+        </div>
+    );
+}
+
 function StatsWidget() {
     const { siteStats = {} } = usePage<SidebarSharedProps>().props;
 
@@ -339,9 +368,8 @@ export default function Sidebar() {
 
     return (
         <aside className="w-full lg:w-64 shrink-0 space-y-4 lg:self-start lg:sticky lg:top-20">
-            <div className="hidden lg:block">
-                <AuthWidget />
-            </div>
+            <AuthWidget />
+            {/* <PointWidget /> */}
             <BannerSlot banners={sideBanners1} position="SIDE" />
             <ExchangeWidget />
             <StockWidget />

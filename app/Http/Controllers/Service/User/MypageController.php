@@ -48,6 +48,7 @@ class MypageController extends Controller
         $comments  = null;
         $inquiries = null;
         $scraps    = null;
+        $points    = null;
 
         if ($tab === 'posts') {
             $base = DB::table('posts as p')
@@ -135,14 +136,32 @@ class MypageController extends Controller
                 'path'  => $request->url(),
                 'query' => $request->query(),
             ]);
+        } elseif ($tab === 'points') {
+            $base = DB::table('user_points')
+                ->where('user_id', $userId)
+                ->orderByDesc('created_at');
+
+            $total = (clone $base)->count();
+
+            $items = (clone $base)
+                ->offset(($page - 1) * self::PER_PAGE)
+                ->limit(self::PER_PAGE)
+                ->get(['id', 'type', 'amount', 'balance', 'description', 'created_at']);
+
+            $points = new LengthAwarePaginator($items, $total, self::PER_PAGE, $page, [
+                'path'  => $request->url(),
+                'query' => $request->query(),
+            ]);
         }
 
         return Inertia::render('User/MyPage', [
-            'tab'       => $tab,
-            'posts'     => $posts,
-            'comments'  => $comments,
-            'inquiries' => $inquiries,
-            'scraps'    => $scraps,
+            'tab'        => $tab,
+            'posts'      => $posts,
+            'comments'   => $comments,
+            'inquiries'  => $inquiries,
+            'scraps'     => $scraps,
+            'points'     => $points,
+            'pointTypes' => config('config.point_types'),
         ]);
     }
 

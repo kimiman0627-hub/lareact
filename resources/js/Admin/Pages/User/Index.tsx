@@ -256,12 +256,181 @@ function InquiriesTab({ userId }: InquiriesTabProps) {
     );
 }
 
+// ─── 포인트 타입 배지 색상 ──────────────────────────────────────────
+const POINT_TYPE_COLORS: Record<string, string> = {
+    POST:             "bg-green-50 text-green-700 border-green-200",
+    COMMENT:          "bg-teal-50 text-teal-700 border-teal-200",
+    LOGIN:            "bg-indigo-50 text-indigo-700 border-indigo-200",
+    ATTENDANCE:       "bg-amber-50 text-amber-700 border-amber-200",
+    ATTENDANCE_BONUS: "bg-orange-50 text-orange-700 border-orange-200",
+};
+
+// ─── 포인트 내역 탭 ─────────────────────────────────────────────────
+interface PointsHistoryTabProps { userId: any; }
+
+function PointsHistoryTab({ userId }: PointsHistoryTabProps) {
+    const [state, setState] = useState<any>({ items: [], total: 0, page: 1, last_page: 1, pointTypes: {}, loading: true });
+
+    const load = useCallback((page = 1) => {
+        setState((s: any) => ({ ...s, loading: true }));
+        ajax.get(`/admin/users/${userId}/points`, { page })
+            .then((data: any) => setState({ ...data, loading: false }))
+            .catch(() => setState((s: any) => ({ ...s, loading: false })));
+    }, [userId]);
+
+    useEffect(() => { load(1); }, [load]);
+
+    if (state.loading) return <Spinner />;
+    if (!state.items.length) return <p className="text-center text-sm text-gray-400 py-10">포인트 내역이 없습니다.</p>;
+
+    return (
+        <>
+            <p className="text-xs text-gray-400 mb-3">총 {state.total.toLocaleString()}건</p>
+            <div className="space-y-1">
+                {state.items.map((p: any) => (
+                    <div key={p.id} className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition">
+                        <span className={`inline-flex px-2 py-0.5 rounded border text-[11px] font-semibold shrink-0 ${POINT_TYPE_COLORS[p.type] ?? "bg-gray-50 text-gray-500 border-gray-200"}`}>
+                            {state.pointTypes[p.type] ?? p.type}
+                        </span>
+                        <span className={`text-sm font-bold shrink-0 w-16 text-right tabular-nums ${p.amount > 0 ? "text-blue-600" : "text-red-500"}`}>
+                            {p.amount > 0 ? `+${p.amount.toLocaleString()}` : p.amount.toLocaleString()}
+                        </span>
+                        <span className="text-[11px] text-gray-400 shrink-0 w-20 text-right tabular-nums">{p.balance.toLocaleString()}</span>
+                        <span className="flex-1 text-sm text-gray-600 truncate">{p.description}</span>
+                        <span className="text-[11px] text-gray-400 shrink-0">{formatDate(p.created_at)}</span>
+                    </div>
+                ))}
+            </div>
+            <SimplePager page={state.page} lastPage={state.last_page} onChange={load} />
+        </>
+    );
+}
+
+// ─── 달력 빌더 유틸 ─────────────────────────────────────────────────
+function buildCalendarCells(year: number, month: number): (number | null)[] {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < firstDay; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+}
+
+// ─── 출석 달력 탭 ────────────────────────────────────────────────────
+interface AttendanceCalendarTabProps { userId: any; }
+
+function AttendanceCalendarTab({ userId }: AttendanceCalendarTabProps) {
+    const today = new Date();
+    const [attendedDates, setAttendedDates] = useState<Set<string>>(new Set());
+    const [consecutive,   setConsecutive]   = useState(0);
+    const [totalDays,     setTotalDays]     = useState(0);
+    const [loading,       setLoading]       = useState(true);
+    const [viewYear,      setViewYear]      = useState(today.getFullYear());
+    const [viewMonth,     setViewMonth]     = useState(today.getMonth());
+
+    const minDate = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+
+    useEffect(() => {
+        ajax.get(`/admin/users/${userId}/attendances`)
+            .then((data: any) => {
+                setAttendedDates(new Set((data.dates ?? []).map((d: any) => d.attended_date)));
+                setConsecutive(data.consecutive ?? 0);
+                setTotalDays(data.total ?? 0);
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
+    }, [userId]);
+
+    if (loading) return <Spinner />;
+
+    const cells    = buildCalendarCells(viewYear, viewMonth);
+    const todayStr = today.toISOString().slice(0, 10);
+    const canPrev  = new Date(viewYear, viewMonth - 1, 1) >= minDate;
+    const canNext  = viewYear < today.getFullYear() || (viewYear === today.getFullYear() && viewMonth < today.getMonth());
+
+    function prevMonth() {
+        if (!canPrev) return;
+        if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
+        else setViewMonth(m => m - 1);
+    }
+    function nextMonth() {
+        if (!canNext) return;
+        if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
+        else setViewMonth(m => m + 1);
+    }
+
+    return (
+        <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-50 rounded-lg px-4 py-3 text-center">
+                    <p className="text-2xl font-bold text-blue-600">{consecutive}일</p>
+                    <p className="text-[11px] text-blue-400 mt-0.5">현재 연속 출석</p>
+                </div>
+                <div className="bg-indigo-50 rounded-lg px-4 py-3 text-center">
+                    <p className="text-2xl font-bold text-indigo-600">{totalDays.toLocaleString()}일</p>
+                    <p className="text-[11px] text-indigo-400 mt-0.5">누적 출석 일수</p>
+                </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                    <button onClick={prevMonth} disabled={!canPrev}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition text-sm">
+                        ←
+                    </button>
+                    <span className="text-sm font-bold text-gray-700">{viewYear}년 {viewMonth + 1}월</span>
+                    <button onClick={nextMonth} disabled={!canNext}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition text-sm">
+                        →
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-7 mb-1">
+                    {["일","월","화","수","목","금","토"].map((d, i) => (
+                        <div key={d} className={`text-center text-[11px] font-semibold py-0.5 ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-gray-400"}`}>{d}</div>
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-7 gap-0.5">
+                    {cells.map((day, idx) => {
+                        if (!day) return <div key={idx} />;
+                        const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                        const attended = attendedDates.has(dateStr);
+                        const isToday  = dateStr === todayStr;
+                        const isSun    = idx % 7 === 0;
+                        const isSat    = idx % 7 === 6;
+                        return (
+                            <div key={idx} className={`flex items-center justify-center h-8 rounded text-xs font-medium ${
+                                attended  ? "bg-blue-500 text-white" :
+                                isToday   ? "border-2 border-blue-400 text-blue-600" :
+                                isSun     ? "text-red-400" :
+                                isSat     ? "text-blue-400" :
+                                            "text-gray-600"
+                            }`}>
+                                {day}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div className="flex gap-4 mt-3 text-[11px] text-gray-400">
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-500 inline-block" />출석일</span>
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border-2 border-blue-400 inline-block" />오늘</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── 회원 상세/수정 모달 ────────────────────────────────────────────
 const TABS = [
-    { key: "info",      label: "기본정보" },
-    { key: "posts",     label: "게시글" },
-    { key: "comments",  label: "댓글" },
-    { key: "inquiries", label: "문의사항" },
+    { key: "info",       label: "기본정보" },
+    { key: "posts",      label: "게시글" },
+    { key: "comments",   label: "댓글" },
+    { key: "inquiries",  label: "문의사항" },
+    { key: "points",     label: "포인트" },
+    { key: "attendance", label: "출석" },
 ];
 
 function DetailModal({ userId, onClose }: DetailModalProps) {
@@ -469,6 +638,20 @@ function DetailModal({ userId, onClose }: DetailModalProps) {
                             {activeTab === "inquiries" && (
                                 <div className="p-6">
                                     <InquiriesTab userId={userId} />
+                                </div>
+                            )}
+
+                            {/* ── 포인트 내역 탭 ── */}
+                            {activeTab === "points" && (
+                                <div className="p-6">
+                                    <PointsHistoryTab userId={userId} />
+                                </div>
+                            )}
+
+                            {/* ── 출석 달력 탭 ── */}
+                            {activeTab === "attendance" && (
+                                <div className="p-6">
+                                    <AttendanceCalendarTab userId={userId} />
                                 </div>
                             )}
                         </>

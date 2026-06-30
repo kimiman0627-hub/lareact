@@ -11,6 +11,7 @@ use App\Models\User\User;
 use App\Models\File\File;
 use App\Models\Board\Post;
 use App\Models\Crawl\CrawlLog;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -99,14 +100,12 @@ abstract class BaseScraper extends Command
             imagesavealpha($resized, true);
 
             imagecopyresampled($resized, $image, 0, 0, 0, 0, $maxWidth, $dstH, $srcW, $srcH);
-            imagedestroy($image);
             $image = $resized;
         }
 
         ob_start();
         $ok = imagewebp($image, null, $quality);
         $webpData = ob_get_clean();
-        imagedestroy($image);
 
         return ($ok && $webpData) ? $webpData : null;
     }
@@ -176,7 +175,7 @@ abstract class BaseScraper extends Command
      */
     protected function makeClient(array $extra = []): Client
     {
-        return new Client(array_merge_recursive([
+        return new Client(array_replace_recursive([
             'timeout'         => 15,
             'connect_timeout' => 5,
             'headers'         => [
@@ -240,7 +239,17 @@ abstract class BaseScraper extends Command
             } catch (RequestException $e) {
                 $status = $e->getResponse()?->getStatusCode() ?? 0;
 
-                if ($status === 429) {
+                if ($status === 0) {
+                    // cURL 네트워크 오류 (프록시 실패, SOCKS5 오류 등) — ConnectException과 동일하게 재시도
+                    if ($attempt < $maxRetries) {
+                        $wait = rand(5, 15);
+                        $this->warn("  연결 실패, {$wait}초 후 재시도 (" . ($attempt + 1) . "/{$maxRetries}): {$url}");
+                        sleep($wait);
+                        continue;
+                    }
+                    $this->error("  연결 실패 (최대 재시도 초과, {$url}): " . $e->getMessage());
+                    return null;
+                } elseif ($status === 429) {
                     // Too Many Requests: 충분히 쉬고 재시도
                     if ($attempt < $maxRetries) {
                         $wait = rand(30, 60);
@@ -623,7 +632,7 @@ abstract class BaseScraper extends Command
      * 다운로드 완료된 비디오로 content HTML 내 URL 교체.
      * content HTML에는 public_url (full URL) 사용.
      */
-    protected function replaceVideoUrls(string $content, array $videos, array $downloaded): string
+    protected function replaceVideoUrls(string $content, array $downloaded): string
     {
         foreach ($downloaded as $originalSrc => $fileInfo) {
             $publicUrl = $fileInfo['public_url'] ?? $fileInfo['file_url'];
@@ -779,7 +788,7 @@ abstract class BaseScraper extends Command
     protected function deletePost(int $postId): void
     {
         // 스토리지 파일 삭제 (storage 컬럼으로 디스크 분기)
-        \DB::table('files')
+        DB::table('files')
             ->where('file_kind', 'POST')
             ->where('ref_id', $postId)
             ->get()
@@ -793,12 +802,12 @@ abstract class BaseScraper extends Command
                 }
             });
 
-        \DB::table('files')->where('file_kind', 'POST')->where('ref_id', $postId)->delete();
-        \DB::table('comments')->where('post_id', $postId)->delete();
-        \DB::table('post_likes')->where('post_id', $postId)->delete();
-        \DB::table('scraps')->where('post_id', $postId)->delete();
-        \DB::table('post_banners')->where('post_id', $postId)->delete();
-        \DB::table('posts')->where('post_id', $postId)->delete();
+        DB::table('files')->where('file_kind', 'POST')->where('ref_id', $postId)->delete();
+        DB::table('comments')->where('post_id', $postId)->delete();
+        DB::table('post_likes')->where('post_id', $postId)->delete();
+        DB::table('scraps')->where('post_id', $postId)->delete();
+        DB::table('post_banners')->where('post_id', $postId)->delete();
+        DB::table('posts')->where('post_id', $postId)->delete();
     }
 
     /**

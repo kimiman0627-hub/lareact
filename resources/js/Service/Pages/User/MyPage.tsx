@@ -348,15 +348,100 @@ function ScrapsTab({ scraps }: ScrapsTabProps) {
     );
 }
 
+interface PointItem {
+    id: number;
+    type: string;
+    amount: number;
+    balance: number;
+    description: string | null;
+    created_at: string;
+}
+
+interface PointsTabProps {
+    points?: PaginatedData<PointItem> | null;
+    pointTypes?: Record<string, string>;
+}
+
+function PointsTab({ points, pointTypes = {} }: PointsTabProps) {
+    const items    = points?.data ?? [];
+    const meta     = points?.meta ?? (points as unknown as { last_page?: number; current_page?: number; total?: number }) ?? {};
+    const lastPage = (meta as { last_page?: number }).last_page ?? 1;
+    const curPage  = (meta as { current_page?: number }).current_page ?? 1;
+    const total    = (meta as { total?: number }).total ?? 0;
+    const { auth } = usePage<SharedProps>().props;
+    const currentPoint = auth?.user?.point ?? 0;
+
+    function goPage(page: number) {
+        router.get("/mypage", { tab: "points", page }, { preserveScroll: true });
+    }
+
+    return (
+        <div>
+            {/* 현재 포인트 요약 */}
+            <div className="px-4 py-3 border-b border-gray-100 bg-amber-50 flex items-center justify-between">
+                <span className="text-xs text-slate-500">전체 {total}건</span>
+                <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-slate-500">현재 보유</span>
+                    <span className="text-sm font-bold text-amber-600">{currentPoint.toLocaleString()}P</span>
+                </div>
+            </div>
+
+            {items.length === 0 ? (
+                <div className="py-16 text-center text-sm text-slate-400">포인트 내역이 없습니다.</div>
+            ) : (
+                <>
+                    {/* 헤더 */}
+                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-slate-400">
+                        <span>내역</span>
+                        <span className="text-right w-16">포인트</span>
+                        <span className="text-right w-16">잔액</span>
+                        <span className="text-right w-20">일시</span>
+                    </div>
+                    <ul className="divide-y divide-gray-50">
+                        {items.map((item) => {
+                            const isEarn = item.amount > 0;
+                            return (
+                                <li key={item.id}
+                                    className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center px-4 py-3 hover:bg-gray-50 transition">
+                                    <div className="min-w-0">
+                                        <span className="text-xs font-medium text-slate-700">
+                                            {pointTypes[item.type] ?? item.type}
+                                        </span>
+                                        {item.description && (
+                                            <span className="ml-1.5 text-[11px] text-slate-400">{item.description}</span>
+                                        )}
+                                    </div>
+                                    <span className={`text-xs font-bold text-right w-16 ${isEarn ? "text-blue-600" : "text-red-500"}`}>
+                                        {isEarn ? "+" : ""}{item.amount.toLocaleString()}P
+                                    </span>
+                                    <span className="text-xs text-slate-600 text-right w-16 font-medium">
+                                        {item.balance.toLocaleString()}P
+                                    </span>
+                                    <span className="text-[11px] text-slate-400 text-right w-20 whitespace-nowrap">
+                                        {timeAgo(item.created_at)}
+                                    </span>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </>
+            )}
+            <Pagination curPage={curPage} lastPage={lastPage} onPageChange={goPage} />
+        </div>
+    );
+}
+
 interface MyPageProps {
     tab?: string;
     posts?: PaginatedData<Post & { board_name?: string }> | null;
     comments?: PaginatedData<CommentItem> | null;
     inquiries?: PaginatedData<InquiryItem> | null;
     scraps?: PaginatedData<ScrapItem> | null;
+    points?: PaginatedData<PointItem> | null;
+    pointTypes?: Record<string, string>;
 }
 
-export default function MyPage({ tab, posts, comments, inquiries, scraps }: MyPageProps) {
+export default function MyPage({ tab, posts, comments, inquiries, scraps, points, pointTypes }: MyPageProps) {
     const { auth } = usePage<SharedProps>().props;
     const user = auth?.user;
 
@@ -376,10 +461,15 @@ export default function MyPage({ tab, posts, comments, inquiries, scraps }: MyPa
                 <div className="w-12 h-12 rounded-full bg-sky-500 flex items-center justify-center text-white text-lg font-black shrink-0">
                     {user?.name?.[0]?.toUpperCase() ?? "?"}
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                     <p className="font-bold text-slate-800">{user?.name}</p>
                     <p className="text-xs text-slate-400">{user?.email}</p>
                 </div>
+                <button onClick={() => switchTab("points")}
+                    className="flex flex-col items-end shrink-0 hover:opacity-75 transition">
+                    <span className="text-[11px] text-slate-400">보유 포인트</span>
+                    <span className="text-lg font-black text-amber-500">{(user?.point ?? 0).toLocaleString()}<span className="text-xs font-semibold text-slate-400 ml-0.5">P</span></span>
+                </button>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -388,6 +478,7 @@ export default function MyPage({ tab, posts, comments, inquiries, scraps }: MyPa
                     <TabButton label="내댓글" active={tab === "comments"} onClick={() => switchTab("comments")} />
                     <TabButton label="내문의" active={tab === "inquiries"} onClick={() => switchTab("inquiries")} />
                     <TabButton label="스크랩" active={tab === "scraps"} onClick={() => switchTab("scraps")} />
+                    <TabButton label="포인트 내역" active={tab === "points"} onClick={() => switchTab("points")} />
                     <TabButton label="비밀번호 변경" active={tab === "password"} onClick={() => switchTab("password")} />
                 </div>
 
@@ -395,6 +486,7 @@ export default function MyPage({ tab, posts, comments, inquiries, scraps }: MyPa
                 {tab === "comments"   && <CommentsTab comments={comments} />}
                 {tab === "inquiries"  && <InquiriesTab inquiries={inquiries} />}
                 {tab === "scraps"     && <ScrapsTab scraps={scraps} />}
+                {tab === "points"     && <PointsTab points={points} pointTypes={pointTypes} />}
                 {tab === "password"   && <PasswordTab />}
             </div>
         </ServiceLayout>

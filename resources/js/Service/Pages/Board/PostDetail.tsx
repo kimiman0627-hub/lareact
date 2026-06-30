@@ -603,6 +603,42 @@ export default function PostDetail({
                 </div>
             )}
 
+            <section className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 px-5 py-4">
+                <h2 className="text-sm font-bold text-slate-700 mb-1">댓글 <span className="text-blue-500">{comments.length}</span></h2>
+                {topLevel.length > 0 ? (
+                    <ul className="divide-y divide-gray-100">
+                        {topLevel.map(c => (
+                            <CommentItem key={c.comment_id} comment={c} postId={post.post_id}
+                                authUser={authUser} maxDepth={maxDepth}
+                                replies={comments.filter(r => r.parent_id === c.comment_id)}
+                                allComments={comments} />
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-slate-400 py-6 text-center">첫 댓글을 남겨보세요.</p>
+                )}
+                <div className="mt-4 border-t border-gray-100 pt-4">
+                    {authUser ? (
+                        <div className="flex gap-3">
+                            <div className="shrink-0 w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-500 uppercase">
+                                {authUser.name?.charAt(0) ?? "?"}
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-xs text-slate-500 mb-1">
+                                    <span className="font-semibold text-slate-700">{authUser.name}</span>으로 댓글 작성
+                                </p>
+                                <CommentForm postId={post.post_id} />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center py-3">
+                            <p className="text-sm text-slate-500 mb-2">댓글을 작성하려면 로그인이 필요합니다.</p>
+                            <Link href="/login" className="text-sm text-blue-500 hover:underline font-medium">로그인하기</Link>
+                        </div>
+                    )}
+                </div>
+            </section>
+
             {boardPosts.length > 0 && (() => {
                 const totalPages = Math.ceil(boardPostsTotal / boardPostsPerPage);
                 const goPage = (page: number) => router.visit(`/post/${post.post_id}`, {
@@ -656,42 +692,6 @@ export default function PostDetail({
                     </section>
                 );
             })()}
-
-            <section className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 px-5 py-4">
-                <h2 className="text-sm font-bold text-slate-700 mb-1">댓글 <span className="text-blue-500">{comments.length}</span></h2>
-                {topLevel.length > 0 ? (
-                    <ul className="divide-y divide-gray-100">
-                        {topLevel.map(c => (
-                            <CommentItem key={c.comment_id} comment={c} postId={post.post_id}
-                                authUser={authUser} maxDepth={maxDepth}
-                                replies={comments.filter(r => r.parent_id === c.comment_id)}
-                                allComments={comments} />
-                        ))}
-                    </ul>
-                ) : (
-                    <p className="text-sm text-slate-400 py-6 text-center">첫 댓글을 남겨보세요.</p>
-                )}
-                <div className="mt-4 border-t border-gray-100 pt-4">
-                    {authUser ? (
-                        <div className="flex gap-3">
-                            <div className="shrink-0 w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-500 uppercase">
-                                {authUser.name?.charAt(0) ?? "?"}
-                            </div>
-                            <div className="flex-1">
-                                <p className="text-xs text-slate-500 mb-1">
-                                    <span className="font-semibold text-slate-700">{authUser.name}</span>으로 댓글 작성
-                                </p>
-                                <CommentForm postId={post.post_id} />
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="text-center py-3">
-                            <p className="text-sm text-slate-500 mb-2">댓글을 작성하려면 로그인이 필요합니다.</p>
-                            <Link href="/login" className="text-sm text-blue-500 hover:underline font-medium">로그인하기</Link>
-                        </div>
-                    )}
-                </div>
-            </section>
         </ServiceLayout>
     );
 }

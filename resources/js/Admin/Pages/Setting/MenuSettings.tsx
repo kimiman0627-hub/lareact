@@ -6,6 +6,7 @@ interface MenuItem {
     [key: string]: unknown;
     label: string;
     href: string;
+    new_tab?: boolean;
     children: ChildItem[];
 }
 
@@ -134,6 +135,16 @@ function MenuCard({ item, idx, total, onChange, onRemove, onMove }: MenuCardProp
                     placeholder="URL (소메뉴 있으면 비워도 됨)"
                     className="flex-1 text-sm font-mono border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+
+                <label className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap cursor-pointer select-none shrink-0">
+                    <input
+                        type="checkbox"
+                        checked={!!item.new_tab}
+                        onChange={(e) => onChange(idx, "new_tab", e.target.checked)}
+                        className="w-3.5 h-3.5 accent-blue-600"
+                    />
+                    새창
+                </label>
 
                 <button type="button" onClick={() => setExpanded((v) => !v)}
                     className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition">
@@ -300,6 +311,11 @@ export default function MenuSettings({ menu: initialMenu = [] }: MenuSettingsPro
                                 <div key={item.label} className="relative group">
                                     <div className="px-3 h-10 flex items-center gap-1 text-white/90 text-sm font-medium whitespace-nowrap cursor-default">
                                         {item.label}
+                                        {item.new_tab && (
+                                            <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                            </svg>
+                                        )}
                                         {item.children.length > 0 && (
                                             <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

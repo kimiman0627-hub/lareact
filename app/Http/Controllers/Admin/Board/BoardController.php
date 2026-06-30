@@ -82,10 +82,14 @@ class BoardController extends Controller
                 'options.allow_anonymous'    => 'nullable|boolean',
                 'options.show_anonymous'     => 'nullable|boolean',
                 'options.secret_comment'     => 'nullable|boolean',
-                // 포인트
-                'options.point_enabled'      => 'nullable|boolean',
-                'options.point_amount'       => 'nullable|integer|min:0',
-                'options.point_cycle'        => 'nullable|in:ONCE,DAILY,PER_POST',
+                // 게시글 포인트
+                'options.point_enabled'         => 'nullable|boolean',
+                'options.point_amount'          => 'nullable|integer|min:0',
+                'options.point_cycle'           => 'nullable|in:ONCE,DAILY,PER_POST',
+                // 댓글 포인트
+                'options.comment_point_enabled' => 'nullable|boolean',
+                'options.comment_point_amount'  => 'nullable|integer|min:0',
+                'options.comment_point_cycle'   => 'nullable|in:ONCE,DAILY,PER_POST',
                 // 파일
                 'options.file_upload'        => 'nullable|boolean',
                 'options.file_size_limit'    => 'nullable|integer|min:1|max:500',

@@ -141,6 +141,57 @@ class UserController extends Controller
         ]);
     }
 
+    // 포인트 내역 (JSON)
+    public function points(Request $request, $id)
+    {
+        User::findOrFail($id);
+
+        $page    = max(1, (int) $request->input('page', 1));
+        $perPage = 20;
+        $offset  = ($page - 1) * $perPage;
+
+        $total = DB::table('user_points')->where('user_id', $id)->count();
+        $items = DB::table('user_points')
+            ->where('user_id', $id)
+            ->orderByDesc('id')
+            ->offset($offset)->limit($perPage)
+            ->get(['id', 'type', 'amount', 'balance', 'description', 'created_at']);
+
+        return response()->json([
+            'items'     => $items,
+            'total'     => $total,
+            'page'      => $page,
+            'last_page' => max(1, (int) ceil($total / $perPage)),
+            'pointTypes' => config('config.point_types'),
+        ]);
+    }
+
+    // 출석 달력 (JSON) - 최근 6개월 날짜 목록
+    public function attendances($id)
+    {
+        User::findOrFail($id);
+
+        $from = today()->subMonths(5)->startOfMonth()->toDateString();
+
+        $rows = DB::table('user_attendances')
+            ->where('user_id', $id)
+            ->where('attended_date', '>=', $from)
+            ->orderBy('attended_date')
+            ->get(['attended_date', 'consecutive_days']);
+
+        $consecutive = DB::table('user_attendances')
+            ->where('user_id', $id)
+            ->whereIn('attended_date', [today()->toDateString(), today()->subDay()->toDateString()])
+            ->orderByDesc('attended_date')
+            ->value('consecutive_days') ?? 0;
+
+        return response()->json([
+            'dates'       => $rows,
+            'consecutive' => (int) $consecutive,
+            'total'       => DB::table('user_attendances')->where('user_id', $id)->count(),
+        ]);
+    }
+
     public function search(Request $request)
     {
         $request->validate([

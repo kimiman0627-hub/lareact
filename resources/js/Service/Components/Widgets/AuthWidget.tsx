@@ -117,6 +117,11 @@ function UserPanel({ user }: UserPanelProps) {
                     <p className="text-xs text-slate-400 truncate">{user.email}</p>
                 </div>
             </div>
+            <Link href="/mypage?tab=points"
+                className="flex items-center justify-between px-3 py-2 bg-amber-50 rounded-lg hover:bg-amber-100 transition">
+                <span className="text-xs text-slate-500">보유 포인트</span>
+                <span className="text-sm font-bold text-amber-500">{(user.point ?? 0).toLocaleString()}<span className="text-[10px] font-normal text-slate-400 ml-0.5">P</span></span>
+            </Link>
             <div className="grid grid-cols-2 gap-1.5 text-xs">
                 <Link href="/mypage?tab=posts" className="text-center py-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-600 transition">내 게시글</Link>
                 <Link href="/mypage?tab=comments" className="text-center py-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-600 transition">내 댓글</Link>

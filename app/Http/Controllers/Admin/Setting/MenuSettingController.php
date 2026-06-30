@@ -33,7 +33,7 @@ class MenuSettingController extends Controller
         ]);
 
         $menu = collect($request->input('menu'))->map(function ($item) {
-            return [
+            $entry = [
                 'label'    => trim($item['label']),
                 'href'     => trim($item['href'] ?? ''),
                 'children' => collect($item['children'] ?? [])->map(fn ($c) => [
@@ -41,12 +41,17 @@ class MenuSettingController extends Controller
                     'href'  => trim($c['href']),
                 ])->values()->toArray(),
             ];
+            if (!empty($item['new_tab'])) {
+                $entry['new_tab'] = true;
+            }
+            return $entry;
         })->values()->toArray();
 
         SiteSetting::set('nav_menu', json_encode($menu, JSON_UNESCAPED_UNICODE));
 
         // 캐시 무효화
         \Illuminate\Support\Facades\Cache::forget('site_settings_all');
+        \Illuminate\Support\Facades\Cache::forget('nav_menu');
 
         return back()->with('success', '메뉴가 저장되었습니다.');
     }

@@ -21,6 +21,9 @@ use App\Http\Controllers\Admin\Blogger\BloggerLogController;
 use App\Http\Controllers\Admin\Threads\ThreadsLogController;
 use App\Http\Controllers\Admin\Setting\ApiKeyController;
 use App\Http\Controllers\Admin\Setting\AdminProfileController;
+use App\Http\Controllers\Admin\Setting\PointSettingController;
+use App\Http\Controllers\Admin\Point\PointController;
+use App\Http\Controllers\Admin\Point\AttendanceController as AdminAttendanceController;
 use App\Http\Controllers\Admin\AdminManager\AdminManagerController;
 
 // 관리자
@@ -50,6 +53,8 @@ Route::middleware(['auth:admin', 'admin.permission'])->group(function () {
     //   GET|HEAD        admin/users/{user}/edit .............. admin.users.edit › Admin\User\UserController@edit
     Route::get('users/search',              [UserController::class, 'search'])->name('users.search');
     Route::get('users/{user}/activities',   [UserController::class, 'activities'])->name('users.activities');
+    Route::get('users/{user}/points',       [UserController::class, 'points'])->name('users.points');
+    Route::get('users/{user}/attendances',  [UserController::class, 'attendances'])->name('users.attendances');
     Route::resource('users', UserController::class);
 
     Route::get('posts/search', [PostController::class, 'search'])->name('posts.search');
@@ -90,6 +95,10 @@ Route::middleware(['auth:admin', 'admin.permission'])->group(function () {
     Route::get('settings/site',     [SiteSettingController::class, 'index'])->name('settings.site');
     Route::post('settings/site',    [SiteSettingController::class, 'update'])->name('settings.site.update');
 
+    // 포인트 설정
+    Route::get('settings/point',    [PointSettingController::class, 'index'])->name('settings.point');
+    Route::post('settings/point',   [PointSettingController::class, 'update'])->name('settings.point.update');
+
     // 메뉴 설정
     Route::get('settings/menu',     [MenuSettingController::class, 'index'])->name('settings.menu');
     Route::post('settings/menu',    [MenuSettingController::class, 'update'])->name('settings.menu.update');
@@ -114,6 +123,14 @@ Route::middleware(['auth:admin', 'admin.permission'])->group(function () {
     Route::post('settings/blogger/disconnect', [ApiKeyController::class, 'bloggerDisconnect'])->name('settings.blogger.disconnect');
     Route::get('settings/threads/auth',        [ApiKeyController::class, 'threadsAuthStart'])->name('settings.threads.auth');
     Route::post('settings/threads/disconnect', [ApiKeyController::class, 'threadsDisconnect'])->name('settings.threads.disconnect');
+
+    // 포인트 내역
+    Route::get('points', [PointController::class, 'index'])->name('points.index');
+
+    // 출석 내역
+    Route::get('attendances',           [AdminAttendanceController::class, 'index'])->name('attendances.index');
+    Route::post('attendances',          [AdminAttendanceController::class, 'store'])->name('attendances.store');
+    Route::delete('attendances/{id}',   [AdminAttendanceController::class, 'destroy'])->name('attendances.destroy');
 
     // 관리자 프로필 (자기 자신)
     Route::get('settings/profile',   [AdminProfileController::class, 'index'])->name('settings.profile');

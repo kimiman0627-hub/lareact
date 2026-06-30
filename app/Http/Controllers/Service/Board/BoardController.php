@@ -11,6 +11,7 @@ use Illuminate\Validation\Rule;
 use App\Lib\Board\Board as BoardLib;
 use App\Lib\Board\Post as PostLib;
 use App\Lib\Board\PostFileCleaner;
+use App\Lib\User\PointService;
 use Inertia\Inertia;
 
 class BoardController extends Controller
@@ -260,6 +261,8 @@ class BoardController extends Controller
 
         PostFileCleaner::syncContentFiles($postId, $validated['content'], $validated['uploaded_file_ids'] ?? []);
 
+        PointService::earnForPost(Auth::id(), $options, $postId, $validated['post_category']);
+
         return redirect()->route('post.show', $postId)->with('message', '게시글이 등록되었습니다.');
     }
 
@@ -279,6 +282,8 @@ class BoardController extends Controller
         if (!Auth::check() || (Auth::id() !== (int) $post->user_id && !$isAdmin)) {
             abort(403);
         }
+
+        PointService::revokeForPost((int) $post->user_id, $id);
 
         PostFileCleaner::deleteByPost($id);
 

@@ -7,6 +7,7 @@ export interface User {
   name: string;
   email: string;
   role?: string;
+  point?: number;
   created_at?: string;
 }
 
@@ -90,6 +91,7 @@ export interface NavLink {
 export interface NavItem {
   label: string;
   href: string;
+  new_tab?: boolean;
   children?: NavItem[];
 }
 

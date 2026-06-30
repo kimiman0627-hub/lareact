@@ -46,6 +46,9 @@ const DEFAULT_OPTIONS = {
     point_enabled: false,
     point_amount: 0,
     point_cycle: "ONCE",
+    comment_point_enabled: false,
+    comment_point_amount: 0,
+    comment_point_cycle: "ONCE",
     file_upload: true,
     file_size_limit: 10,
     posts_per_page: 20,
@@ -417,10 +420,7 @@ export default function BoardModal({
                                             label="지급 포인트"
                                             value={form.options.point_amount}
                                             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                                setOpt(
-                                                    "point_amount",
-                                                    Number(e.target.value),
-                                                )
+                                                setOpt("point_amount", Number(e.target.value))
                                             }
                                             min={0}
                                         />
@@ -428,10 +428,35 @@ export default function BoardModal({
                                             label="지급 주기"
                                             value={form.options.point_cycle}
                                             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                                                setOpt(
-                                                    "point_cycle",
-                                                    e.target.value,
-                                                )
+                                                setOpt("point_cycle", e.target.value)
+                                            }
+                                            options={pointCycles}
+                                        />
+                                    </div>
+                                )}
+                                <Toggle
+                                    label="댓글 포인트 지급"
+                                    desc="댓글 작성 시 포인트를 지급합니다"
+                                    checked={form.options.comment_point_enabled}
+                                    onChange={() =>
+                                        setOpt("comment_point_enabled", !form.options.comment_point_enabled)
+                                    }
+                                />
+                                {form.options.comment_point_enabled && (
+                                    <div className="pt-3 grid gap-4 md:grid-cols-2">
+                                        <NumberField
+                                            label="지급 포인트"
+                                            value={form.options.comment_point_amount}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                                setOpt("comment_point_amount", Number(e.target.value))
+                                            }
+                                            min={0}
+                                        />
+                                        <SelectField
+                                            label="지급 주기"
+                                            value={form.options.comment_point_cycle}
+                                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                                setOpt("comment_point_cycle", e.target.value)
                                             }
                                             options={pointCycles}
                                         />
