@@ -61,7 +61,7 @@ sudo APP_USER=kim DOMAIN=example.com INSTALL_ES=1 bash ~/www/lareact/deploy/serv
 
 | 항목 | 내용 |
 |------|------|
-| 패키지 | Nginx, PHP 8.3-FPM, PostgreSQL, Redis, Supervisor, Node 22, Composer |
+| 패키지 | Nginx, PHP-FPM (OS 기본 버전, 8.2 이상), PostgreSQL, Redis, Supervisor, Node 22, Composer |
 | DB | `lareact` DB/계정 생성, 비밀번호 자동 생성 후 `.env` 에 저장 |
 | `.env` | `.env.example` 복사 후 운영값(APP_ENV=production, APP_DEBUG=false, pgsql 등) 설정 |
 | 빌드 | `composer install --no-dev`, `npm ci && npm run build`, `migrate`, `storage:link` |
@@ -164,13 +164,13 @@ tail -f ~/www/lareact/storage/logs/laravel-$(date +%F).log   # 앱 로그
 tail -f ~/www/lareact/storage/logs/worker.log                # 큐 워커 로그
 sudo tail -f /var/log/nginx/error.log                        # Nginx 에러
 sudo supervisorctl status                                    # 큐 워커 상태
-sudo systemctl status php8.3-fpm nginx postgresql            # 서비스 상태
+sudo systemctl status nginx postgresql "php*-fpm"            # 서비스 상태
 sudo systemctl status 'actions.runner.*'                     # 배포 러너 상태
 crontab -l                                                   # 스케줄러 등록 확인
 php artisan schedule:list                                    # 스케줄 목록
 ```
 
-- **배포 후 502 Bad Gateway**: `sudo systemctl restart php8.3-fpm`
+- **배포 후 502 Bad Gateway**: `sudo systemctl restart php*-fpm`
 - **이미지가 안 보임**: `php artisan storage:link` 실행 여부, `ls -la public/storage` 확인
 - **배포 잡이 Queued 에서 멈춤**: 러너 offline → `sudo systemctl restart 'actions.runner.*'`
 - **서버에서 직접 파일을 수정한 경우**: `git pull --ff-only` 가 실패합니다. 서버에서는 수정하지 말고 로컬에서 수정 후 push 하세요.

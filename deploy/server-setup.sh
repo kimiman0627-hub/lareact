@@ -16,7 +16,7 @@ APP_DIR="${APP_DIR:-/home/${APP_USER}/www/lareact}"
 REPO_URL="${REPO_URL:-https://github.com/kimiman0627-hub/lareact.git}"
 BRANCH="${BRANCH:-main}"
 DOMAIN="${DOMAIN:-_}"                 # 도메인 없으면 "_" (IP 로 접속)
-PHP_VER="${PHP_VER:-8.3}"
+PHP_VER="${PHP_VER:-}"                # 비우면 OS 기본 PHP 버전 자동 감지 (8.2 이상 필요)
 NODE_MAJOR="${NODE_MAJOR:-22}"
 DB_NAME="${DB_NAME:-lareact}"
 DB_USER="${DB_USER:-lareact}"
@@ -40,11 +40,21 @@ apt-get update -y
 apt-get install -y software-properties-common ca-certificates curl gnupg git unzip \
     nginx postgresql postgresql-contrib redis-server supervisor acl openssl
 
-# Ubuntu 24.04 는 PHP 8.3 기본 제공, 22.04 는 ondrej PPA 필요
-if ! apt-cache show "php${PHP_VER}-fpm" >/dev/null 2>&1; then
+# PHP 버전 결정: OS 기본 php-fpm 이 가리키는 버전 사용 (예: 24.04 → 8.3, 25.04 → 8.4)
+php_available() { apt-cache policy "php$1-fpm" 2>/dev/null | grep -qE 'Candidate: [0-9]'; }
+ver_ge_82() { [[ "$(printf '%s\n8.2\n' "$1" | sort -V | head -1)" == "8.2" ]]; }
+if [[ -z "$PHP_VER" ]]; then
+    PHP_VER="$(apt-cache depends php-fpm 2>/dev/null | sed -nE 's/.*php([0-9]+\.[0-9]+)-fpm.*/\1/p' | head -1 || true)"
+fi
+if [[ -z "$PHP_VER" ]] || ! ver_ge_82 "$PHP_VER" || ! php_available "$PHP_VER"; then
+    # OS 기본 PHP 가 8.2 미만이거나 없으면 ondrej PPA(Ubuntu 전용)에서 8.3 설치
+    [[ "$ID" == "ubuntu" ]] || { echo "PHP 8.2 이상 패키지를 찾을 수 없습니다 (OS: $PRETTY_NAME)."; exit 1; }
+    PHP_VER=8.3
     add-apt-repository -y ppa:ondrej/php
     apt-get update -y
+    php_available "$PHP_VER" || { echo "ondrej PPA 에도 php${PHP_VER} 이 없습니다 (OS: $PRETTY_NAME)."; exit 1; }
 fi
+echo "OS: $PRETTY_NAME / PHP: $PHP_VER"
 apt-get install -y "php${PHP_VER}-fpm" "php${PHP_VER}-cli" "php${PHP_VER}-pgsql" \
     "php${PHP_VER}-mbstring" "php${PHP_VER}-xml" "php${PHP_VER}-curl" "php${PHP_VER}-zip" \
     "php${PHP_VER}-gd" "php${PHP_VER}-intl" "php${PHP_VER}-bcmath" "php${PHP_VER}-redis"

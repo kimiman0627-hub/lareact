@@ -27,7 +27,7 @@ case "$(uname -m)" in
     *) echo "지원하지 않는 아키텍처: $(uname -m)"; exit 1 ;;
 esac
 
-VERSION="$(curl -fsSL https://api.github.com/repos/actions/runner/releases/latest | grep -oP '"tag_name":\s*"v\K[^"]+')"
+VERSION="$(curl -fsSL https://api.github.com/repos/actions/runner/releases/latest | sed -nE 's/.*"tag_name":[[:space:]]*"v([^"]+)".*/\1/p' | head -1)"
 echo "==> actions/runner v${VERSION} (${ARCH}) → ${RUNNER_DIR}"
 
 mkdir -p "$RUNNER_DIR"
