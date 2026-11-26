@@ -75,9 +75,13 @@ jobs:
 
   deploy:
     name: Deploy to Production
-    runs-on: self-hosted
+    # 미니PC 에 'minipc' 라벨로 등록한 러너에서만 실행 (deploy/install-runner.sh)
+    runs-on: [self-hosted, minipc]
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
 
     steps:
       - name: Deploy
@@ -85,8 +89,14 @@ jobs:
           set -e
           cd /home/kim/www/lareact
 
+          # 실패하더라도 점검 모드는 반드시 해제
+          trap 'php artisan up || true' EXIT
+
+          echo "==> 점검 모드"
+          php artisan down --retry=15 --refresh=15 || true
+
           echo "==> git pull"
-          git pull origin main
+          git pull --ff-only origin main
 
           echo "==> Composer install"
           composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
@@ -97,9 +107,13 @@ jobs:
 
           echo "==> Artisan"
           php artisan migrate --force
+          php artisan storage:link || true
           php artisan config:clear
           php artisan route:clear
           php artisan view:clear
           php artisan cache:clear
+
+          echo "==> 큐 워커 재시작 (supervisor 가 새 코드로 다시 띄움)"
+          php artisan queue:restart
 
           echo "==> Done"
