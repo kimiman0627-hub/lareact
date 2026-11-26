@@ -40,24 +40,36 @@ apt-get update -y
 apt-get install -y software-properties-common ca-certificates curl gnupg git unzip \
     nginx postgresql postgresql-contrib redis-server supervisor acl openssl
 
-# PHP 버전 결정: OS 기본 php-fpm 이 가리키는 버전 사용 (예: 24.04 → 8.3, 25.04 → 8.4)
-php_available() { apt-cache policy "php$1-fpm" 2>/dev/null | grep -qE 'Candidate: [0-9]'; }
+# PHP 설치
+# - 기본: OS 기본 PHP 를 버전 없는 패키지 이름(php-fpm, php-pgsql ...)으로 설치 → 설치 후 실제 버전 확인
+# - OS 기본 PHP 가 8.2 미만이면 (Ubuntu 22.04 = 8.1) ondrej PPA 에서 8.3 설치
+# - PHP_VER=8.x 로 직접 지정하면 그 버전 패키지 설치
 ver_ge_82() { [[ "$(printf '%s\n8.2\n' "$1" | sort -V | head -1)" == "8.2" ]]; }
-if [[ -z "$PHP_VER" ]]; then
-    PHP_VER="$(apt-cache depends php-fpm 2>/dev/null | sed -nE 's/.*php([0-9]+\.[0-9]+)-fpm.*/\1/p' | head -1 || true)"
+PHP_PKGS=(fpm cli pgsql mbstring xml curl zip gd intl bcmath redis)
+# 후보 버전 예: "2:8.3+93ubuntu2" → 8.3
+DEFAULT_PHP="$(LC_ALL=C apt-cache policy php-fpm 2>/dev/null \
+    | sed -nE 's/^[[:space:]]*Candidate: ([0-9]+:)?([0-9]+\.[0-9]+).*/\2/p' | head -1 || true)"
+echo "OS: $PRETTY_NAME / OS 기본 PHP: ${DEFAULT_PHP:-찾을 수 없음}"
+
+if [[ -z "$PHP_VER" && -n "$DEFAULT_PHP" ]] && ver_ge_82 "$DEFAULT_PHP"; then
+    apt-get install -y "${PHP_PKGS[@]/#/php-}"
+else
+    if [[ -z "$PHP_VER" ]]; then
+        if [[ "$ID" != "ubuntu" || "${VERSION_CODENAME:-}" != "jammy" ]]; then
+            echo "PHP 8.2 이상을 OS 기본 저장소에서 찾지 못했습니다. 아래 결과를 확인하세요:"
+            LC_ALL=C apt-cache policy php-fpm
+            exit 1
+        fi
+        PHP_VER=8.3
+        add-apt-repository -y ppa:ondrej/php
+        apt-get update -y
+    fi
+    apt-get install -y "${PHP_PKGS[@]/#/php${PHP_VER}-}"
 fi
-if [[ -z "$PHP_VER" ]] || ! ver_ge_82 "$PHP_VER" || ! php_available "$PHP_VER"; then
-    # OS 기본 PHP 가 8.2 미만이거나 없으면 ondrej PPA(Ubuntu 전용)에서 8.3 설치
-    [[ "$ID" == "ubuntu" ]] || { echo "PHP 8.2 이상 패키지를 찾을 수 없습니다 (OS: $PRETTY_NAME)."; exit 1; }
-    PHP_VER=8.3
-    add-apt-repository -y ppa:ondrej/php
-    apt-get update -y
-    php_available "$PHP_VER" || { echo "ondrej PPA 에도 php${PHP_VER} 이 없습니다 (OS: $PRETTY_NAME)."; exit 1; }
-fi
-echo "OS: $PRETTY_NAME / PHP: $PHP_VER"
-apt-get install -y "php${PHP_VER}-fpm" "php${PHP_VER}-cli" "php${PHP_VER}-pgsql" \
-    "php${PHP_VER}-mbstring" "php${PHP_VER}-xml" "php${PHP_VER}-curl" "php${PHP_VER}-zip" \
-    "php${PHP_VER}-gd" "php${PHP_VER}-intl" "php${PHP_VER}-bcmath" "php${PHP_VER}-redis"
+PHP_VER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
+ver_ge_82 "$PHP_VER" || { echo "설치된 PHP $PHP_VER 은 8.2 미만입니다."; exit 1; }
+[[ -d "/etc/php/${PHP_VER}/fpm/pool.d" ]] || { echo "/etc/php/${PHP_VER}/fpm 이 없습니다. php${PHP_VER}-fpm 설치를 확인하세요."; exit 1; }
+echo "설치된 PHP: $PHP_VER"
 
 # -----------------------------------------------------------------------------
 log "2. Composer"
