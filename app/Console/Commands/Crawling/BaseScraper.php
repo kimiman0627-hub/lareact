@@ -12,6 +12,7 @@ use App\Models\File\File;
 use App\Models\Board\Post;
 use App\Models\Crawl\CrawlLog;
 use App\Lib\User\PointService;
+use App\Lib\Common\FileStorage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -41,30 +42,28 @@ abstract class BaseScraper extends Command
 
     // ---------------------------------------------------------------
     // 스토리지 헬퍼: config/filesystems.php 의 file_storage 값으로 분기
-    // LOCAL → public 디스크 / NCP → ncp 디스크 (비공개 버킷, 프록시 서빙)
+    // LOCAL → public 디스크 / NCP·R2 → 원격 비공개 버킷 (프록시 서빙)
     // ---------------------------------------------------------------
 
     private function storageType(): string
     {
-        return strtoupper(config('filesystems.file_storage', 'LOCAL'));
+        return FileStorage::type();
     }
 
     /**
      * 파일을 적절한 스토리지에 저장.
-     * 반환: ['storage' => 'LOCAL'|'NCP', 'file_url' => 상대경로, 'public_url' => 브라우저_접근_URL]
+     * 반환: ['storage' => 'LOCAL'|'NCP'|'R2', 'file_url' => 상대경로, 'public_url' => 브라우저_접근_URL]
      */
     private function putFile(string $relativePath, string $contents): array
     {
-        $type      = $this->storageType();
-        $disk      = $type === 'NCP' ? 'ncp' : 'public';
-        $publicUrl = $type === 'NCP' ? '/file/' . $relativePath : '/storage/' . $relativePath;
+        $type = $this->storageType();
 
-        Storage::disk($disk)->put($relativePath, $contents);
+        FileStorage::disk($type)->put($relativePath, $contents);
 
         return [
             'storage'    => $type,
             'file_url'   => $relativePath,
-            'public_url' => $publicUrl,
+            'public_url' => FileStorage::publicUrl($relativePath, $type),
         ];
     }
 
@@ -813,10 +812,9 @@ abstract class BaseScraper extends Command
             ->where('ref_id', $postId)
             ->get()
             ->each(function ($file) {
-                $disk = ($file->storage ?? 'LOCAL') === 'NCP' ? 'ncp' : 'public';
                 $rel  = ltrim(preg_replace('#^/(storage|file)/#', '', $file->file_url), '/');
                 try {
-                    Storage::disk($disk)->delete($rel);
+                    FileStorage::disk($file->storage ?? FileStorage::LOCAL)->delete($rel);
                 } catch (\Exception) {
                     // 스토리지 삭제 실패는 무시 (고아 파일로 남아도 DB는 정리)
                 }

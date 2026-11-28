@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\Service\File;
 
+use App\Lib\Common\FileStorage;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Storage;
 
 class FileProxyController extends Controller
 {
     /**
-     * NCP 비공개 버킷의 파일을 프록시로 서빙.
+     * 원격 비공개 버킷(R2 / NCP)의 파일을 프록시로 서빙.
      *
      * 보안 레이어:
      *  1. Referer 체크  — 우리 도메인 외 요청 차단 (핫링킹 방지)
@@ -36,10 +36,10 @@ class FileProxyController extends Controller
             abort(400, 'Invalid path');
         }
 
-        // ── 3. NCP 버킷에서 파일 조회 ────────────────────────────────────
-        $disk = Storage::disk('ncp');
+        // ── 3. 원격 버킷(R2 / NCP)에서 파일 조회 ─────────────────────────
+        $disk = FileStorage::findProxyDisk($path);
 
-        if (!$disk->exists($path)) {
+        if (!$disk) {
             abort(404);
         }
 

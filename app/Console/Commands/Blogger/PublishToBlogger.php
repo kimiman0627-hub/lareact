@@ -5,6 +5,7 @@ namespace App\Console\Commands\Blogger;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use App\Lib\Common\FileStorage;
 use App\Models\Board\Post;
 use App\Models\Blogger\BloggerLog;
 use App\Models\Setting\SiteSetting;
@@ -251,12 +252,12 @@ class PublishToBlogger extends Command
             return $src;
         }
 
-        $cdnBase = rtrim(env('NCP_CDN_URL', ''), '/');
+        $cdnBase = FileStorage::externalBaseUrl();
         if (!$cdnBase) {
             return null;
         }
 
-        // 이미 NCP 퍼블릭 URL이면 그대로 사용
+        // 이미 공개 URL이면 그대로 사용
         if (str_starts_with($src, $cdnBase)) {
             return $src;
         }
@@ -264,9 +265,10 @@ class PublishToBlogger extends Command
         $ext  = strtolower(pathinfo(parse_url($src, PHP_URL_PATH), PATHINFO_EXTENSION)) ?: 'jpg';
         $ext  = in_array($ext, ['jpg','jpeg','png','gif','webp','avif']) ? $ext : 'jpg';
         $dest = "blogger/{$postId}/" . md5($src) . ".{$ext}";
+        $external = FileStorage::externalDisk();
 
         // 이미 업로드된 경우 재사용
-        if (Storage::disk('ncp')->exists($dest)) {
+        if ($external->exists($dest)) {
             return "{$cdnBase}/{$dest}";
         }
 
@@ -275,7 +277,7 @@ class PublishToBlogger extends Command
             if (!$binary) {
                 return null;
             }
-            Storage::disk('ncp')->put($dest, $binary, 'public');
+            $external->put($dest, $binary, FileStorage::externalPutOptions());
             return "{$cdnBase}/{$dest}";
         } catch (\Throwable) {
             return null;
@@ -284,10 +286,10 @@ class PublishToBlogger extends Command
 
     private function fetchImageBinary(string $src): ?string
     {
-        // NCP 비공개 버킷 (/file/...)
+        // 원격 비공개 버킷 (/file/...)
         if (str_starts_with($src, '/file/')) {
             $path = ltrim(substr($src, 6), '/');
-            return Storage::disk('ncp')->get($path) ?: null;
+            return FileStorage::findProxyDisk($path)?->get($path) ?: null;
         }
 
         // 로컬 public 스토리지 (/storage/...)
@@ -316,7 +318,7 @@ class PublishToBlogger extends Command
     {
         if (str_starts_with($src, 'data:')) return $src;
 
-        $cdnBase = rtrim(env('NCP_CDN_URL', ''), '/');
+        $cdnBase = FileStorage::externalBaseUrl();
         if (!$cdnBase) return null;
 
         if (str_starts_with($src, $cdnBase)) return $src;
@@ -324,8 +326,9 @@ class PublishToBlogger extends Command
         $ext  = strtolower(pathinfo(parse_url($src, PHP_URL_PATH), PATHINFO_EXTENSION)) ?: 'mp4';
         $ext  = in_array($ext, ['mp4', 'webm', 'ogg', 'mov', 'm4v', 'avi']) ? $ext : 'mp4';
         $dest = "blogger/{$postId}/" . md5($src) . ".{$ext}";
+        $external = FileStorage::externalDisk();
 
-        if (Storage::disk('ncp')->exists($dest)) {
+        if ($external->exists($dest)) {
             return "{$cdnBase}/{$dest}";
         }
 
@@ -333,9 +336,9 @@ class PublishToBlogger extends Command
             if (str_starts_with($src, '/file/')) {
                 // 스트림 복사 — 대용량 파일도 메모리 낭비 없이 처리
                 $path   = ltrim(substr($src, 6), '/');
-                $stream = Storage::disk('ncp')->readStream($path);
+                $stream = FileStorage::findProxyDisk($path)?->readStream($path);
                 if (!$stream) return null;
-                Storage::disk('ncp')->put($dest, $stream, 'public');
+                $external->put($dest, $stream, FileStorage::externalPutOptions());
                 return "{$cdnBase}/{$dest}";
             }
 
@@ -355,7 +358,7 @@ class PublishToBlogger extends Command
 
                 $res = Http::timeout(60)->withHeaders($headers)->get($src);
                 if (!$res->ok()) return null;
-                Storage::disk('ncp')->put($dest, $res->body(), 'public');
+                $external->put($dest, $res->body(), FileStorage::externalPutOptions());
                 return "{$cdnBase}/{$dest}";
             }
         } catch (\Throwable) {

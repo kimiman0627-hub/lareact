@@ -2,8 +2,8 @@
 
 namespace App\Lib\Board;
 
+use App\Lib\Common\FileStorage;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * 게시물 첨부파일 삭제/동기화 공통 라이브러리.
@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
  * file_url 컬럼은 두 가지 형식이 혼재함:
  *   구형 (관리자 직접 업로드): /storage/uploads/post/...
  *   신형 (크롤러/신규):       uploads/post/...
- * storage 컬럼: LOCAL | NCP
+ * storage 컬럼: LOCAL | NCP | R2
  */
 class PostFileCleaner
 {
@@ -92,7 +92,6 @@ class PostFileCleaner
      */
     private static function deleteFromStorage(string $storage, string $relativePath): void
     {
-        $disk = ($storage === 'NCP') ? 'ncp' : 'public';
-        Storage::disk($disk)->delete($relativePath);
+        FileStorage::disk($storage)->delete($relativePath);
     }
 }

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Service\File;
 
 use App\Http\Controllers\Controller;
+use App\Lib\Common\FileStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\File\File as FileModel;
 
@@ -21,11 +21,10 @@ class FileController extends Controller
         $storedName   = Str::uuid() . '.' . $ext;
         $relativePath = 'uploads/post/' . $storedName;
 
-        $storageType = strtoupper(config('filesystems.file_storage', 'LOCAL'));
-        $disk        = $storageType === 'NCP' ? 'ncp' : 'public';
-        $publicUrl   = $storageType === 'NCP' ? '/file/' . $relativePath : '/storage/' . $relativePath;
+        $storageType = FileStorage::type();
+        $publicUrl   = FileStorage::publicUrl($relativePath, $storageType);
 
-        Storage::disk($disk)->put($relativePath, file_get_contents($file->getRealPath()));
+        FileStorage::disk($storageType)->put($relativePath, file_get_contents($file->getRealPath()));
 
         $record = FileModel::create([
             'storage'       => $storageType,
