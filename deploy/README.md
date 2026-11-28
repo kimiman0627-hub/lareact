@@ -119,17 +119,20 @@ GitHub → 저장소 Settings → Actions → Runners 에서 `minipc-...` 가 **
 - 공유기 포트포워딩 불필요, 집 IP 노출 안 됨, HTTPS 인증서 자동
 - 도메인을 Cloudflare 에 등록해야 함
 
+미니PC 에서 `kim` 계정으로 (sudo 붙이지 말 것):
+
 ```bash
-# 미니PC 에서
-curl -fsSL -o cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-sudo dpkg -i cloudflared.deb
+bash ~/www/lareact/deploy/cloudflare-tunnel.sh krlived.com
 ```
 
-Cloudflare 대시보드 → Zero Trust → Networks → Tunnels → Create tunnel → 표시되는
-`sudo cloudflared service install <토큰>` 명령을 미니PC 에서 실행 → Public Hostname 에
-`example.com` → `http://localhost:80` 추가.
+스크립트가 하는 일:
 
-그 다음 `.env` 의 `APP_URL=https://example.com` 으로 바꾸고 `php artisan config:clear`.
+1. `cloudflared` 설치
+2. Cloudflare 계정 인증: 화면에 나오는 주소를 PC 브라우저에서 열고 도메인 선택 → Authorize
+3. `lareact` 터널 생성, `/etc/cloudflared/config.yml` 작성 (`도메인`, `www.도메인` → `http://localhost:80`)
+4. DNS 레코드를 터널로 연결 (기존 레코드가 있으면 덮어쓸지 y/N 으로 물어봄)
+5. systemd 서비스 등록, `.env` 의 `APP_URL` 을 `https://도메인` 으로 변경, 접속 확인
+
 Nginx 설정이 터널의 `X-Forwarded-Proto: https` 를 PHP 에 넘기므로 Laravel 쪽 추가 설정은 필요 없습니다.
 
 ### B. 공유기 포트포워딩 + Let's Encrypt
