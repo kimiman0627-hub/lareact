@@ -26,10 +26,10 @@ class DcInsideScraper extends BaseScraper
 
     // mgallery는 URL 경로에 /board/ 가 추가됨
     private const GALLERY_TYPE = [
-        'programming'   => 'mgallery',
+        'programming'   => 'board',    // 2026-11 일반 갤러리로 전환됨
         'stock_new1'    => 'board',
         'baseball_new9' => 'board',
-        'soccer'        => 'board',
+        'soccer'        => 'mgallery', // 2026-11 마이너 갤러리로 전환됨
     ];
 
     private const PAGES_PER_GALLERY = 2;

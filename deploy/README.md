@@ -89,6 +89,7 @@ php artisan db:seed --class=AdminSeeder --force        # 관리자 계정 생성
 | `APP_URL` | 실제 접속 주소 (예: `https://example.com`) |
 | `FILE_STORAGE` | 파일 저장소: `LOCAL`(미니PC 디스크) / `R2`(Cloudflare R2) / `NCP` |
 | `R2_*` | Cloudflare R2 키, 엔드포인트, 버킷 (`FILE_STORAGE=R2` 일 때) |
+| `CRAWL_SAVE_VIDEOS` | 크롤링 동영상 저장 여부 (기본 `false`: 동영상 제거, 이미지만 저장) |
 | `NCP_STORAGE_*`, `NCP_CDN_URL` | 네이버 클라우드 Object Storage (`FILE_STORAGE=NCP` 일 때) |
 | `ANTHROPIC_API_KEY` | AI 게시글 요약 |
 | `BLOGGER_*` | Google Blogger 자동 발행 |

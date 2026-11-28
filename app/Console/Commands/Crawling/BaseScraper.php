@@ -305,10 +305,17 @@ abstract class BaseScraper extends Command
             return true;
         }
 
-        $lower = strtolower($body);
+        // 차단/챌린지 페이지는 작음. 수백 KB 짜리 정상 게시판 페이지는
+        // 본문·댓글폼에 키워드가 섞여 있어도 오탐하지 않도록 통과
+        // (예: DC 모든 글에 <input id="kcaptcha_use"> 포함)
+        if (strlen($body) > 100 * 1024) {
+            return false;
+        }
+
+        // 태그 속성/스크립트가 아닌 화면에 보이는 텍스트 기준으로 검사
+        $lower = strtolower(strip_tags(preg_replace('#<(script|style)\b[^>]*>.*?</\1>#is', '', $body)));
         $blockPatterns = [
             'captcha',
-            'recaptcha',
             'robot check',
             'bot detection',
             'access denied',
@@ -320,6 +327,14 @@ abstract class BaseScraper extends Command
 
         foreach ($blockPatterns as $pattern) {
             if (str_contains($lower, $pattern)) {
+                return true;
+            }
+        }
+
+        // 캡차 위젯·Cloudflare 챌린지 마커 (화면 텍스트가 없는 차단 페이지용)
+        $rawLower = strtolower($body);
+        foreach (['g-recaptcha', 'h-captcha', 'cf-turnstile', 'challenge-platform', 'cf-chl-'] as $marker) {
+            if (str_contains($rawLower, $marker)) {
                 return true;
             }
         }
@@ -494,6 +509,19 @@ abstract class BaseScraper extends Command
         return null;
     }
 
+    /** 크롤링 동영상 저장 여부 (config/config.php crawl_save_videos, 기본 false). */
+    protected function saveVideos(): bool
+    {
+        return (bool) config('config.crawl_save_videos', false);
+    }
+
+    /** content HTML 에서 <video>...</video> 블록과 남은 <video>/<source> 태그 제거. */
+    protected function stripVideos(string $content): string
+    {
+        $content = preg_replace('#<video\b[^>]*>.*?</video>#is', '', $content);
+        return preg_replace('#<(video|source)\b[^>]*/?>#i', '', $content);
+    }
+
     /**
      * 컨텐츠 노드에서 비디오 목록 수집.
      * <video src="..."> 및 <video><source src="..."> 패턴 모두 처리.
@@ -501,6 +529,9 @@ abstract class BaseScraper extends Command
      */
     protected function collectVideos(Crawler $contentNode, string $baseUrl): array
     {
+        // 동영상 저장 꺼짐: 수집하지 않음 (본문의 <video> 는 fixVideoUrls 에서 제거됨)
+        if (!$this->saveVideos()) return [];
+
         $videos = [];
 
         $collect = function (Crawler $node, string $tag) use ($baseUrl, &$videos) {
@@ -691,6 +722,11 @@ abstract class BaseScraper extends Command
      */
     protected function fixVideoUrls(string $content, string $baseUrl): string
     {
+        // 동영상 저장 꺼짐: 원본 사이트 링크로 남기면 핫링크 차단으로 깨진 플레이어가 되므로 제거
+        if (!$this->saveVideos()) {
+            return $this->stripVideos($content);
+        }
+
         return preg_replace_callback(
             '/<(video|source)\b([^>]*)>/i',
             function (array $tag) use ($baseUrl): string {

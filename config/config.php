@@ -122,4 +122,8 @@ return [
 
     // 카카오 공유 JS SDK 키 (https://developers.kakao.com 에서 발급)
     'kakao_js_key' => env('KAKAO_JS_KEY', ''),
+
+    // 크롤링 시 동영상 저장 여부 (용량 절감을 위해 기본 false)
+    // false 면 본문의 <video> 를 제거하고 이미지만 저장
+    'crawl_save_videos' => (bool) env('CRAWL_SAVE_VIDEOS', false),
 ];
