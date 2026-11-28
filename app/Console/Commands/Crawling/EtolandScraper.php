@@ -8,6 +8,14 @@ use App\Models\Board\Post;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+/**
+ * 이토랜드 크롤러 (2026-11 리뉴얼된 Next.js 사이트 기준)
+ *
+ *  목록: https://etoland.co.kr/b/{board}/list
+ *        <main> 안의 <li> 행, 첫 칸 = 글번호, 제목 링크 = /b/{board}/view/{slug}-{글번호}
+ *  본문: <h1> 제목, <meta name="author"> 작성자, "조회 : N", .view-content 본문
+ *  이미지: src = btcdn 리사이즈 프록시, data-src = 원본 (btcdn 은 외부 Referer 차단 → 반드시 저장해서 사용)
+ */
 class EtolandScraper extends BaseScraper
 {
     protected $signature = 'crawl:etoland';
@@ -15,15 +23,15 @@ class EtolandScraper extends BaseScraper
 
     private const SOURCE         = 'ETOLAND';
     private const DOMAIN         = 'etoland.co.kr';
-    private const BASE_URL       = 'https://www.' . self::DOMAIN;
+    private const BASE_URL       = 'https://' . self::DOMAIN;
     private const ANONYMOUS_NAME = '익명';
 
+    // etomovie 는 리뉴얼 후 게시판이 사라짐
     private const BOARDS = [
-        'etohumor07' => ['path' => '/bbs/board.php?bo_table=etohumor07', 'category' => 'free'],
-        'freebbs'    => ['path' => '/bbs/board.php?bo_table=freebbs',    'category' => 'free'],
-        'sisabbs01'  => ['path' => '/bbs/board.php?bo_table=sisabbs01',  'category' => 'free'],
-        'etomovie'   => ['path' => '/bbs/board.php?bo_table=etomovie',   'category' => 'free'],
-        'star02'     => ['path' => '/bbs/board.php?bo_table=star02',     'category' => 'free'],
+        'etohumor07' => 'free',
+        'freebbs'    => 'free',
+        'sisabbs01'  => 'free',
+        'star02'     => 'free',
     ];
 
     public function handle(): void
@@ -35,38 +43,22 @@ class EtolandScraper extends BaseScraper
         $this->startCrawlLog(self::SOURCE);
         $this->info('[' . now()->format('Y-m-d H:i:s') . '] 이토랜드 크롤링 시작');
 
-        foreach (self::BOARDS as $boardName => $boardInfo) {
+        foreach (self::BOARDS as $boardName => $category) {
             $this->info("게시판 크롤링: {$boardName}");
-            $this->crawlBoard($client, $boardName, $boardInfo);
+            $this->crawlBoard($client, $boardName, $category);
         }
 
         $this->info('[' . now()->format('Y-m-d H:i:s') . '] 크롤링 완료');
         $this->finishCrawlLog();
     }
 
-    private function crawlBoard(Client $client, string $boardName, array $boardInfo): void
+    private function crawlBoard(Client $client, string $boardName, string $category): void
     {
         try {
-            $html = $this->fetchHtml($client, self::BASE_URL . $boardInfo['path'], true);
+            $html = $this->fetchHtml($client, self::BASE_URL . "/b/{$boardName}/list");
             if (!$html) return;
 
-            $crawler   = new Crawler($html);
-            $postLinks = [];
-
-            $crawler->filter('a[href]')->each(function (Crawler $node) use ($boardName, &$postLinks) {
-                $href = $node->attr('href');
-                if (!$href) return;
-
-                if (preg_match('/bo_table=' . preg_quote($boardName, '/') . '&(?:amp;)?wr_id=(\d+)/i', $href, $m)) {
-                    $wrId = $m[1];
-                    if (isset($postLinks[$wrId])) return;
-
-                    if (!str_starts_with($href, 'http')) {
-                        $href = self::BASE_URL . '/' . ltrim($href, '/');
-                    }
-                    $postLinks[$wrId] = str_replace('&amp;', '&', $href);
-                }
-            });
+            $postLinks = $this->parseList(new Crawler($html), $boardName);
 
             if (empty($postLinks)) {
                 $this->warn("  게시글 링크를 찾지 못했습니다.");
@@ -76,17 +68,17 @@ class EtolandScraper extends BaseScraper
             $this->info("  총 " . count($postLinks) . "건 발견");
             $this->incFound(count($postLinks));
 
-            $candidateSourceIds = array_map(fn($wrId) => $boardName . '_' . $wrId, array_keys($postLinks));
+            $candidateSourceIds = array_map(fn($no) => $boardName . '_' . $no, array_keys($postLinks));
             $existing = $this->fetchExistingSourceIds(self::SOURCE, $candidateSourceIds);
 
-            foreach ($postLinks as $wrId => $url) {
-                $sourceId = $boardName . '_' . $wrId;
+            foreach ($postLinks as $postNo => $url) {
+                $sourceId = $boardName . '_' . $postNo;
                 if (isset($existing[$sourceId])) {
                     $this->line("  스킵 (중복): source_id={$sourceId}");
                     $this->incSkipped();
                     continue;
                 }
-                $this->crawlPost($client, $boardName, $boardInfo['category'], $sourceId, $url);
+                $this->crawlPost($client, $category, $sourceId, $url);
                 $this->throttle();
             }
 
@@ -95,46 +87,57 @@ class EtolandScraper extends BaseScraper
         }
     }
 
-    private function crawlPost(Client $client, string $boardName, string $category, string $sourceId, string $url): void
+    /**
+     * 목록 페이지에서 [글번호 => 절대 URL] 추출.
+     * 사이드바(인기글/HIT 위젯)와 공지 행은 제외: <main> 안의 <li> 중 첫 칸이 숫자인 행만.
+     */
+    private function parseList(Crawler $crawler, string $boardName): array
+    {
+        $links = [];
+
+        $crawler->filter('main li')->each(function (Crawler $li) use ($boardName, &$links) {
+            $first = $li->filter('div')->first();
+            $no    = $first->count() ? trim($first->text('')) : '';
+            if (!ctype_digit($no)) return;
+
+            $a = $li->filter('a[href^="/b/' . $boardName . '/view/"]')->first();
+            if (!$a->count()) return;
+
+            $href = strtok($a->attr('href'), '#');
+            $links[$no] = self::BASE_URL . $href;
+        });
+
+        return $links;
+    }
+
+    private function crawlPost(Client $client, string $category, string $sourceId, string $url): void
     {
         try {
-            $html = $this->fetchHtml($client, $url, true);
+            $html = $this->fetchHtml($client, $url);
             if (!$html) return;
 
             $c = new Crawler($html);
 
-            $ogTitle = $c->filter('meta[property="og:title"]')->first();
-            if ($ogTitle->count()) {
-                $title = trim($ogTitle->attr('content'));
-            } else {
-                $rawTitle = $c->filter('.title_wrap .title')->count()
-                    ? $c->filter('.title_wrap .title')->first()->text()
-                    : '';
-                // etoland 목록형 제목: "[카테고리] 제목 [댓글수 N]" 형식에서 앞뒤 제거
-                $title = trim(preg_replace('/\[댓글수\s*\d+\]\s*$/', '', preg_replace('/^\[[^\]]*\]\s*/', '', $rawTitle)));
-            }
-
+            $title = $this->extractTitle($c);
             if (!$title) {
                 $this->warn("  제목 없음: {$url}");
                 return;
             }
 
-            $writerNode = $c->filter('span.writer span.member')->first();
-            $author     = $writerNode->count() ? trim($writerNode->text()) : self::ANONYMOUS_NAME;
-            if ($author === '이토랜드_익명') {
+            $authorNode = $c->filter('meta[name="author"]')->first();
+            $author     = $authorNode->count() ? trim($authorNode->attr('content') ?? '') : '';
+            if ($author === '' || $author === '이토랜드_익명') {
                 $author = self::ANONYMOUS_NAME;
             }
 
-            $contentNode = $c->filter('#view_content')->first();
+            $contentNode = $c->filter('.view-content')->first();
             if (!$contentNode->count()) {
                 $this->warn("  본문 없음: {$url}");
                 return;
             }
 
-            // 본문 내 불필요한 UI 요소 제거
-            $rawHtml = $contentNode->html();
-            $rawHtml = preg_replace('/<div\b[^>]*\bview_document_address\b[^>]*>.*?<\/div>/is', '', $rawHtml);
-
+            // 이미지를 감싼 원본 이미지 팝업 링크(highslide → 외부 사이트) 제거, 이미지만 남김
+            $rawHtml = preg_replace('#<a\b[^>]*\bhighslide\b[^>]*>(.*?)</a>#is', '$1', $contentNode->html());
             $contentHtml = $this->fixVideoUrls($this->cleanContent($rawHtml), self::BASE_URL);
 
             // 텍스트 부족 게시글 스킵 (AdSense 저품질 콘텐츠 방지)
@@ -145,13 +148,14 @@ class EtolandScraper extends BaseScraper
                 return;
             }
 
-            // view_document_address가 제거된 HTML로 새 Crawler 생성 후 이미지/비디오 수집
-            $cleanNode = new Crawler($contentHtml);
-            $images = $this->collectImagesEtoland($cleanNode, $boardName);
+            $cleanNode = new Crawler('<div>' . $contentHtml . '</div>');
+            $images = $this->collectEtolandImages($cleanNode);
             $videos = $this->collectVideos($cleanNode, self::BASE_URL);
 
-            // 조회수: GnuBoard5 표준 - <span class="views">13420</span>
-            $hits = $this->extractHits($c, ['span.views', '#view_count', '.view_count', 'span.count']);
+            // 글 헤더의 <span>조회 : <!-- -->2226</span> (React 주석 포함)
+            $hits = preg_match('#<span>조회\s*:\s*(?:<!--\s*-->)?\s*([\d,]+)</span>#u', $html, $m)
+                ? (int) str_replace(',', '', $m[1])
+                : 0;
 
             // DB 저장 (트랜잭션) — 이미지 HTTP 요청 없음
             $post = DB::transaction(function () use ($sourceId, $category, $title, $author, $contentHtml, $hits) {
@@ -175,21 +179,21 @@ class EtolandScraper extends BaseScraper
 
             // 이미지 다운로드 (트랜잭션 밖)
             $downloaded = $this->downloadImages($client, $images, $post->post_id);
-            $currentContent = $contentHtml;
+
+            // 이미지가 있었으나 하나도 저장 못한 경우 → 본문이 빈 글이 되므로 삭제
+            if (!empty($images) && empty($downloaded)) {
+                $this->warn("  이미지 다운로드 전체 실패 (source_id={$sourceId}), 게시물 삭제");
+                $this->deletePost($post->post_id);
+                return;
+            }
 
             if (!empty($downloaded)) {
                 $this->saveFileRecords($post->post_id, $downloaded);
-                $currentContent = $this->replaceEtolandImageUrls($currentContent, $images, $downloaded);
             }
+            $currentContent = $this->rewriteEtolandImages($contentHtml, $downloaded);
 
-            // 다운로드 실패한 이미지 정리:
-            // loading_img placeholder src → data-src(이토랜드 원본 URL) fallback으로 교체
-            // data-src도 없으면 img 태그 제거
-            $currentContent = $this->cleanupUndownloadedImages($currentContent);
-
-            // 비디오 다운로드 (트랜잭션 밖)
+            // 비디오 다운로드 (CRAWL_SAVE_VIDEOS=true 일 때만 수집됨)
             $downloadedVideos = $this->downloadVideos($client, $videos, $post->post_id);
-
             if (!empty($downloadedVideos)) {
                 $this->saveFileRecords($post->post_id, $downloadedVideos);
                 $currentContent = $this->replaceVideoUrls($currentContent, $downloadedVideos);
@@ -208,182 +212,72 @@ class EtolandScraper extends BaseScraper
         }
     }
 
+    /** <h1> 제목, 없으면 og:title 에서 " - 유머 게시판" 꼬리 제거. */
+    private function extractTitle(Crawler $c): string
+    {
+        $h1 = $c->filter('article h1')->first();
+        if ($h1->count() && trim($h1->text('')) !== '') {
+            return trim($h1->text(''));
+        }
+
+        $og = $c->filter('meta[property="og:title"]')->first();
+        if (!$og->count()) return '';
+
+        return trim(preg_replace('/\s+-\s+[^-]*게시판$/u', '', $og->attr('content') ?? ''));
+    }
+
     /**
-     * 이토랜드 전용 이미지 수집.
-     * GnuBoard5 lazy-loading: data-file-src에 실제 파일명, src는 로딩 플레이스홀더.
-     * 리사이즈 프록시 URL(/module/resize/...?src=/data/...) → 원본 경로로 복원.
+     * 본문 이미지 수집. 원본(data-src) 우선, 없으면 src.
+     * 반환: [원본URL => ['resolved' => 절대URL, 'attr' => 'src']]
      */
-    private function collectImagesEtoland(Crawler $contentNode, string $boardName): array
+    private function collectEtolandImages(Crawler $contentNode): array
     {
         $images = [];
 
-        $contentNode->filter('img')->each(function (Crawler $img) use ($boardName, &$images) {
-            $dataFileSrc = $img->attr('data-file-src') ?? '';
-            $src         = $img->attr('src')           ?? '';
-            $dataSrc     = $img->attr('data-src')      ?? '';
+        $contentNode->filter('img')->each(function (Crawler $img) use (&$images) {
+            $src = $this->etolandImageKey($img->attr('data-src') ?? '', $img->attr('src') ?? '');
+            if (!$src || isset($images[$src])) return;
 
-            // 우선순위: data-src > data-file-src > src
-            //
-            // data-file-src 단독 사용 시 구성하는 URL(/data/file/{board}/{token})은
-            // 실제 파일 경로(/data/files/{board}/{year}/{month}/{day}/minify/{token}.jpg)와
-            // 달라 693바이트 오류 응답을 반환하므로, full URL인 data-src를 먼저 사용한다.
-            if ($dataSrc && !str_starts_with($dataSrc, 'data:') && !str_contains($dataSrc, 'loading_img')) {
-                // 리사이즈 프록시 URL에서 원본 경로 복원
-                if (preg_match('/[?&]src=(.+)$/', $dataSrc, $m)) {
-                    $dataSrc = urldecode($m[1]);
-                }
-                $resolved = str_starts_with($dataSrc, 'http')
-                    ? $dataSrc
-                    : self::BASE_URL . '/' . ltrim($dataSrc, '/');
-
-                if (!isset($images[$dataSrc])) {
-                    $images[$dataSrc] = ['resolved' => $resolved, 'attr' => 'data-src'];
-                }
-                return;
-            }
-
-            // data-src 없을 때만 data-file-src 폴백 (토큰 → CDN URL 구성)
-            if ($dataFileSrc && !str_starts_with($dataFileSrc, 'data:')) {
-                if (isset($images[$dataFileSrc])) return;
-                $cdnUrl = self::BASE_URL . '/data/file/' . $boardName . '/' . $dataFileSrc;
-                $images[$dataFileSrc] = ['resolved' => $cdnUrl, 'attr' => 'data-file-src'];
-                return;
-            }
-
-            // 일반 src (로딩 플레이스홀더 제외)
-            if ($src && !str_starts_with($src, 'data:') && !str_contains($src, 'loading_img')) {
-                // 리사이즈 프록시 URL에서 원본 경로 복원
-                if (preg_match('/[?&]src=(.+)$/', $src, $m)) {
-                    $src = urldecode($m[1]);
-                }
-                if (isset($images[$src])) return;
-                $resolved = str_starts_with($src, 'http')
-                    ? $src
-                    : self::BASE_URL . '/' . ltrim($src, '/');
-                $images[$src] = ['resolved' => $resolved, 'attr' => 'src'];
-            }
+            $images[$src] = ['resolved' => $src, 'attr' => 'src'];
         });
 
         return $images;
     }
 
-    /**
-     * 다운로드 실패한 이미지 정리.
-     * loading_img placeholder src가 남아 있는 img 태그에서:
-     *  - data-src 있음 → src를 이토랜드 원본 URL로 교체, data-src/data-file-src 제거
-     *  - data-src 없음 → img 태그 자체 제거 (깨진 이미지 방지)
-     */
-    private function cleanupUndownloadedImages(string $content): string
+    /** img 의 data-src / src 중 사용할 원본 URL (절대경로). data: URI 는 제외. */
+    private function etolandImageKey(string $dataSrc, string $src): string
     {
-        return preg_replace_callback(
-            '/<img\b([^>]*)>/i',
-            function (array $m): string {
-                $attrs = $m[1];
+        $url = ($dataSrc !== '' && !str_starts_with($dataSrc, 'data:')) ? $dataSrc : $src;
+        if ($url === '' || str_starts_with($url, 'data:')) return '';
+        if (str_starts_with($url, '//')) return 'https:' . $url;
 
-                // loading_img src가 없으면 건드리지 않음
-                if (!preg_match('/\bsrc=["\'][^"\']*loading_img[^"\']*["\']/i', $attrs)) {
-                    return $m[0];
-                }
-
-                // data-src에서 fallback URL 추출 (상대경로면 절대 URL로 보완)
-                $fallbackSrc = '';
-                if (preg_match('/\bdata-src=["\']([^"\']+)["\']/i', $attrs, $ds)) {
-                    $fallbackSrc = $ds[1];
-                    if (!str_starts_with($fallbackSrc, 'http')) {
-                        $fallbackSrc = self::BASE_URL . '/' . ltrim($fallbackSrc, '/');
-                    }
-                }
-
-                if (!$fallbackSrc) {
-                    // fallback 없음 → 태그 제거
-                    return '';
-                }
-
-                // loading_img src → 이토랜드 원본 URL로 교체
-                $attrs = preg_replace('/\bsrc=["\'][^"\']*loading_img[^"\']*["\']/', 'src="' . $fallbackSrc . '"', $attrs);
-                // data-src, data-file-src 제거 (처리 완료)
-                $attrs = preg_replace('/\s*\bdata-src=["\'][^"\']*["\']/', '', $attrs);
-                $attrs = preg_replace('/\s*\bdata-file-src=["\'][^"\']*["\']/', '', $attrs);
-
-                return '<img ' . trim(preg_replace('/\s+/', ' ', $attrs)) . '>';
-            },
-            $content
-        ) ?? $content;
+        return str_starts_with($url, 'http') ? $url : self::BASE_URL . '/' . ltrim($url, '/');
     }
 
     /**
-     * 이토랜드 전용 이미지 URL 교체.
-     * data-file-src 방식: 플레이스홀더 src를 서버 URL로 교체하고 data-file-src 속성 제거.
-     * 그 외는 BaseScraper::replaceImageUrls 와 동일.
+     * 본문 <img> 태그를 저장된 이미지 주소로 다시 작성.
+     * 저장 못한 이미지는 이토랜드 CDN 이 외부 Referer 를 차단해 어차피 깨지므로 제거.
      */
-    private function replaceEtolandImageUrls(string $content, array $images, array $downloaded): string
+    private function rewriteEtolandImages(string $content, array $downloaded): string
     {
-        foreach ($downloaded as $originalSrc => $fileInfo) {
-            $serverUrl = $fileInfo['public_url'] ?? $fileInfo['file_url'];
-            $attrName  = $images[$originalSrc]['attr'] ?? 'src';
+        return preg_replace_callback('/<img\b[^>]*>/i', function (array $m) use ($downloaded): string {
+            $tag = $m[0];
+            $key = $this->etolandImageKey($this->tagAttr($tag, 'data-src'), $this->tagAttr($tag, 'src'));
 
-            if ($attrName === 'data-file-src') {
-                // <img ... src="[placeholder]" ... data-file-src="TOKEN" ...> 처리:
-                // 1) 플레이스홀더 src → 서버 URL로 교체
-                // 2) data-file-src 속성 제거
-                $content = preg_replace_callback(
-                    '/<img\b([^>]*)\bdata-file-src=["\']' . preg_quote($originalSrc, '/') . '["\']([^>]*)>/i',
-                    function (array $m) use ($serverUrl): string {
-                        $before = $m[1];
-                        $after  = $m[2];
-                        $full   = $before . $after;
-
-                        // 로딩 플레이스홀더 src 속성을 서버 URL로 교체
-                        if (preg_match('/\bsrc=["\'][^"\']*loading[^"\']*["\']/i', $full)) {
-                            $full = preg_replace(
-                                '/\bsrc=["\'][^"\']*loading[^"\']*["\']/i',
-                                'src="' . $serverUrl . '"',
-                                $full
-                            );
-                        } else {
-                            // src 속성이 없거나 다른 src인 경우 앞에 추가
-                            $full = 'src="' . $serverUrl . '" ' . $full;
-                        }
-
-                        // 공백 정리
-                        $full = trim(preg_replace('/\s+/', ' ', $full));
-                        return '<img ' . $full . '>';
-                    },
-                    $content
-                );
-            } elseif ($attrName === 'data-src') {
-                // data-src가 있는 img 태그는 src="/img/loading_img.jpg" 도 함께 있으므로
-                // regex callback으로 loading src 교체 + data-src/data-file-src 속성 제거
-                $escaped = preg_quote($originalSrc, '/');
-                $replaced = preg_replace_callback(
-                    '/<img\b([^>]*)\bdata-src=["\']' . $escaped . '["\']([^>]*)>/i',
-                    function (array $m) use ($serverUrl): string {
-                        $attrs = $m[1] . $m[2];
-                        // 로딩 플레이스홀더 src 교체
-                        if (preg_match('/\bsrc=["\'][^"\']*loading[^"\']*["\']/i', $attrs)) {
-                            $attrs = preg_replace(
-                                '/\bsrc=["\'][^"\']*loading[^"\']*["\']/i',
-                                'src="' . $serverUrl . '"',
-                                $attrs
-                            );
-                        } else {
-                            $attrs = 'src="' . $serverUrl . '" ' . $attrs;
-                        }
-                        // data-src, data-file-src 속성 제거
-                        $attrs = preg_replace('/\s*\bdata-src=["\'][^"\']*["\']/', '', $attrs);
-                        $attrs = preg_replace('/\s*\bdata-file-src=["\'][^"\']*["\']/', '', $attrs);
-                        return '<img ' . trim(preg_replace('/\s+/', ' ', $attrs)) . '>';
-                    },
-                    $content
-                );
-                if ($replaced !== null) {
-                    $content = $replaced;
-                }
-            } else {
-                $content = str_replace($originalSrc, $serverUrl, $content);
+            if ($key !== '' && isset($downloaded[$key])) {
+                $url = $downloaded[$key]['public_url'] ?? $downloaded[$key]['file_url'];
+                return '<img src="' . e($url) . '" alt="" loading="lazy">';
             }
-        }
 
-        return $content;
+            return '';
+        }, $content) ?? $content;
+    }
+
+    /** HTML 태그 문자열에서 속성값 추출 (엔티티 디코딩). */
+    private function tagAttr(string $tag, string $name): string
+    {
+        return preg_match('/\s' . preg_quote($name, '/') . '\s*=\s*(["\'])(.*?)\1/is', $tag, $m)
+            ? html_entity_decode($m[2], ENT_QUOTES | ENT_HTML5, 'UTF-8')
+            : '';
     }
 }
