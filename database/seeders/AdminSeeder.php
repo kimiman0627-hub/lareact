@@ -21,7 +21,8 @@ class AdminSeeder extends Seeder
         Admin::create([
             'name'     => '최고관리자',
             'email'    => 'admin@gmail.com',
-            'password' => Hash::make('admin1234'), 
+            'is_super' => true, // 슈퍼 관리자 아니면 모든 메뉴가 403
+            'password' => Hash::make('admin1234'),
         ]);
 
     }
