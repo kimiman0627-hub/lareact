@@ -11,6 +11,10 @@ Schedule::command('crawl:fomos')->cron('10 */2 * * *');        // 매 짝수시 
 Schedule::command('crawl:bobaedream')->cron('20 */2 * * *');   // 매 짝수시 :20
 // Schedule::command('crawl:theqoo')->cron('45 */2 * * *');    // 매 짝수시 :45
 
+// 로또 당첨번호 — 토요일 추첨(20:35) 후 반영, 일요일 오전에 한 번 더 (DB 에 없는 회차만 적재)
+Schedule::command('lotto:sync')->weeklyOn(6, '21:30')->timezone('Asia/Seoul')->withoutOverlapping();
+Schedule::command('lotto:sync')->weeklyOn(0, '09:00')->timezone('Asia/Seoul')->withoutOverlapping();
+
 // AI 요약 — 2시간 간격 (크롤링 5분 후)
 Schedule::command('posts:summarize --limit=20')->cron('5 */2 * * *');
 
