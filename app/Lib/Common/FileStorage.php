@@ -58,6 +58,35 @@ class FileStorage
     }
 
     /**
+     * files.file_url → 브라우저 URL.
+     * 구형(/storage/..., /file/...)·외부(http) 값은 그대로, 신형 상대경로(uploads/...)는 storage 로 접두사 결정.
+     */
+    public static function fileUrl(?string $fileUrl, ?string $storage = null): ?string
+    {
+        if (!$fileUrl) return null;
+        if (str_starts_with($fileUrl, '/') || preg_match('#^https?://#i', $fileUrl)) return $fileUrl;
+
+        return self::publicUrl($fileUrl, $storage ?? self::LOCAL);
+    }
+
+    /**
+     * 게시글 첫 번째 이미지 첨부의 브라우저 URL 을 구하는 SQL 서브쿼리 (fileUrl() 과 같은 규칙).
+     * 예) DB::raw(FileStorage::postThumbnailSql('p.post_id') . ' AS thumbnail')
+     */
+    public static function postThumbnailSql(string $postIdColumn): string
+    {
+        return "(SELECT CASE
+                    WHEN f.file_url LIKE '/%' OR f.file_url LIKE 'http%' THEN f.file_url
+                    WHEN f.storage IN ('" . self::NCP . "', '" . self::R2 . "') THEN '/file/' || f.file_url
+                    ELSE '/storage/' || f.file_url
+                END
+                FROM files f
+                WHERE f.file_kind = 'POST' AND f.ref_id = {$postIdColumn}
+                  AND (f.mime_type IS NULL OR f.mime_type LIKE 'image/%')
+                ORDER BY f.file_id ASC LIMIT 1)";
+    }
+
+    /**
      * /file/... 프록시가 조회할 원격 디스크 목록 (우선순위 순).
      * 현재 저장소를 먼저 보고, 설정된 다른 원격 저장소로 폴백 (NCP → R2 이전 기간 대비).
      *

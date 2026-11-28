@@ -13,6 +13,7 @@ use App\Lib\Board\Post as PostLib;
 use App\Lib\Board\PostFileCleaner;
 use App\Lib\User\PointService;
 use Inertia\Inertia;
+use App\Lib\Common\FileStorage;
 
 class BoardController extends Controller
 {
@@ -156,11 +157,13 @@ class BoardController extends Controller
             : $post->title;
 
         // OG 이미지: 첨부 파일 우선, 없으면 본문 첫 번째 img src
-        $ogImage = DB::table('files')
+        $ogFile = DB::table('files')
             ->where('file_kind', 'POST')
             ->where('ref_id', $id)
+            ->where(fn ($q) => $q->whereNull('mime_type')->orWhere('mime_type', 'like', 'image/%'))
             ->orderBy('file_id')
-            ->value('file_url');
+            ->first(['file_url', 'storage']);
+        $ogImage = $ogFile ? FileStorage::fileUrl($ogFile->file_url, $ogFile->storage) : null;
 
         if (!$ogImage && $post->content) {
             preg_match('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $post->content, $imgMatch);

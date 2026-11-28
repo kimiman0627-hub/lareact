@@ -6,6 +6,7 @@ use Database\Factories\BoardFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use App\Lib\Common\FileStorage;
 
 class Board extends Model
 {
@@ -49,7 +50,7 @@ class Board extends Model
                     'p.created_at',
                     'p.is_notice',
                     'u.name as author',
-                    DB::raw("(SELECT file_url FROM files WHERE file_kind = 'POST' AND ref_id = p.post_id ORDER BY file_id ASC LIMIT 1) AS thumbnail"),
+                    DB::raw(FileStorage::postThumbnailSql('p.post_id') . ' AS thumbnail'),
                 ]);
         }
 

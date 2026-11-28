@@ -7,6 +7,7 @@ use App\Models\Banner\Banner as BannerModel;
 use App\Models\Board\Board as BoardModel;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use App\Lib\Common\FileStorage;
 
 class MainController extends Controller
 {
@@ -57,7 +58,7 @@ class MainController extends Controller
                 'p.post_id', 'p.title', 'p.hits', 'p.comment_count', 'p.created_at',
                 'u.name as author',
                 'b.board_name',
-                DB::raw("(SELECT file_url FROM files WHERE file_kind = 'POST' AND ref_id = p.post_id ORDER BY file_id ASC LIMIT 1) AS thumbnail"),
+                DB::raw(FileStorage::postThumbnailSql('p.post_id') . ' AS thumbnail'),
             ])
             ->toArray();
     }
