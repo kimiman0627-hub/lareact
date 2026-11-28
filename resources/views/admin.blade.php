@@ -7,12 +7,14 @@
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="alternate icon" href="/favicon.ico" />
         <title>KRLived Admin</title>
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
         @routes
         @inertiaHead
         @viteReactRefresh
         @vite(['resources/css/admin.css', 'resources/js/admin.tsx'])
     </head>
-    <body class="bg-gray-100">
+    <body class="bg-slate-50 text-slate-900 antialiased">
         @inertia
     </body>
 </html>
