@@ -686,10 +686,17 @@ abstract class BaseScraper extends Command
     {
         foreach ($downloaded as $originalSrc => $fileInfo) {
             $publicUrl = $fileInfo['public_url'] ?? $fileInfo['file_url'];
-            $content   = str_replace($originalSrc, $publicUrl, $content);
+            $content   = str_replace($this->srcVariants($originalSrc), $publicUrl, $content);
         }
 
         return $content;
+    }
+
+    /** src 원문과 HTML 엔티티 인코딩(&amp;) 형태. 인코딩 형태를 먼저 치환해야 부분 치환이 안 생김. */
+    protected function srcVariants(string $src): array
+    {
+        $encoded = str_replace('&', '&amp;', $src);
+        return $encoded === $src ? [$src] : [$encoded, $src];
     }
 
     /**
@@ -801,14 +808,17 @@ abstract class BaseScraper extends Command
             $serverUrl = $fileInfo['public_url'] ?? $fileInfo['file_url'];
             $attrName  = $images[$originalSrc]['attr'] ?? 'src';
 
-            if ($attrName === 'data-src') {
-                $content = str_replace(
-                    ['data-src="' . $originalSrc . '"', "data-src='" . $originalSrc . "'"],
-                    'src="' . $serverUrl . '"',
-                    $content
-                );
-            } else {
-                $content = str_replace($originalSrc, $serverUrl, $content);
+            // DOM 에서 읽은 src 는 '&', content HTML 에는 '&amp;' 로 들어 있음 (예: DC viewimage.php?id=..&no=..)
+            foreach ($this->srcVariants($originalSrc) as $src) {
+                if ($attrName === 'data-src') {
+                    $content = str_replace(
+                        ['data-src="' . $src . '"', "data-src='" . $src . "'"],
+                        'src="' . $serverUrl . '"',
+                        $content
+                    );
+                } else {
+                    $content = str_replace($src, $serverUrl, $content);
+                }
             }
         }
 
