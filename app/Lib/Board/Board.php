@@ -76,11 +76,8 @@ class Board
 
     public function create(): BoardModel
     {
-        $data = $this->params;
-        if (isset($data['options']) && is_array($data['options'])) {
-            $data['options'] = json_encode($data['options']);
-        }
-        return BoardModel::create($data);
+        // options 는 모델 $casts('array') 가 JSON 으로 저장 — 여기서 json_encode 하면 이중 인코딩됨
+        return BoardModel::create($this->params);
     }
 
     public function update(): ?BoardModel
